@@ -34,9 +34,7 @@ async fn static_file_http_response(html_file_path: web::Path<String>) -> HttpRes
     }
 
     let error_closure = move || {
-        let mut error_message: String = "Unknown path: ".to_owned();
-        error_message.push_str(&path);
-        let error_message = error_message;
+        let error_message = format!("Unknown path: {}", path);
 
         return HttpResponse::build(StatusCode::NOT_FOUND)
             .content_type("text/html; charset=utf-8")
@@ -51,10 +49,7 @@ async fn static_file_http_response(html_file_path: web::Path<String>) -> HttpRes
         if extension.len() == 0  {
             return error_closure();
         }
-
-        let mut full_path = "static/".to_owned();
-        full_path.push_str(&html_file_path);
-        let full_path = full_path;
+        let full_path = format!("static/{}", html_file_path);
 
         match fs::read_to_string(full_path) {
             Ok(contents) => {

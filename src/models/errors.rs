@@ -3,13 +3,8 @@ use derive_more::Display;
 use diesel::result::{DatabaseErrorKind, Error as DBError};
 use std::convert::From;
 
-pub type AppResult<R> = Result<R, AppError>;
-
 #[derive(Debug, Display)]
 pub enum AppError {
-    #[display(fmt = "Service Unavailable")]
-    ServiceUnavailable(String),
-
     #[display(fmt = "Internal Server Error")]
     InternalServerError,
     
@@ -24,8 +19,6 @@ pub enum AppError {
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            AppError::ServiceUnavailable(ref message) => HttpResponse::ServiceUnavailable()
-                .json(message),
             AppError::InternalServerError => HttpResponse::InternalServerError()
                 .json("Internal Server Error, Please try later"),
             AppError::BadRequest(ref message) => {

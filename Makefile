@@ -20,3 +20,6 @@ migrations_revert: ## Revert the last migration
 
 migrations_redo: ## Redo all migrations
 	diesel migration redo
+
+local_start: ## Start everything for local dev
+	sudo service postgresql start && cargo run
