@@ -7,4 +7,7 @@ pub fn get_all() -> Scope {
             web::resource("/password")
                 .route(web::post().to(auth::ask_password_reset))
                 .route(web::put().to(auth::reset_password)))
+        .service(
+            web::resource("/login")
+                .route(web::post().to(auth::login)))
 }

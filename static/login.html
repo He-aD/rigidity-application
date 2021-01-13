@@ -25,7 +25,7 @@
     let email = document.querySelector('#email');
     let password = document.querySelector('#password')
 
-    post('api/auth/login', { email: email.value, password: password.value }).then(data => {
+    post('api-open/login', { email: email.value, password: password.value }).then(data => {
       console.error(data);
     });
   }
