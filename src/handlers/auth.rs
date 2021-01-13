@@ -93,12 +93,12 @@ fn t_ask_password_reset(
                 .format("%c");
             let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}.</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
     
-            let mut email_service = EmailService::new(
+            let email_service = EmailService::new(
                 &data.email,
                 String::from("Rigidity password reset"),
                 link
             );
-            email_service.force_in_debug = true;
+            
             match email_service.send() {
                 Ok(_response) => {
                     Ok(())

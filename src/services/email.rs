@@ -15,6 +15,7 @@ impl<'a> EmailService<'a> {
             to,
             subject,
             html,
+            #[cfg(debug_assertions)]
             force_in_debug: false
         }
     }

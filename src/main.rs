@@ -15,7 +15,7 @@ async fn main() -> std::io::Result<()> {
             .service(app_conf::static_routes::get_all())
             .default_service(app_conf::static_routes::default_service()) // 404
     })
-    .bind("127.0.0.1:8080")?
+    .bind(app_conf::get_listen_address())?
     .run()
     .await
 }
