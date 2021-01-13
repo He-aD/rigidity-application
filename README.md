@@ -35,5 +35,5 @@ Diesel postgres feature installation :
 
 - sudo apt install libpq-dev
 - cargo install diesel_cli --no-default-features --features postgres
-- diesel setup
+- diesel setup --database-url=postgres://postgres:password@localhost/postgres?sslmode=disable
 
