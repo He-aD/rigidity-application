@@ -1,20 +1,5 @@
-#[macro_use]
-extern crate diesel;
-extern crate mailgun_rs;
-extern crate chrono;
-
 use actix_web::{App, HttpServer};
-use diesel::{r2d2::ConnectionManager, PgConnection};
-
-pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
-
-mod app_conf;
-mod handlers;
-mod models;
-mod schema;
-mod utils;
-mod services;
-mod errors;
+use rigidity_application::app_conf;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

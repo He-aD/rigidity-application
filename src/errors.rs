@@ -11,7 +11,7 @@ pub enum AppError {
     ServiceUnavailable(String),
 
     #[display(fmt = "Internal Server Error")]
-    InternalServerError,
+    InternalServerError(String),
     
     #[display(fmt = "BadRequest: {}", _0)]
     BadRequest(String),
@@ -26,8 +26,11 @@ impl ResponseError for AppError {
         match self {
             AppError::ServiceUnavailable(ref message) => HttpResponse::ServiceUnavailable()
                 .json(message),
-            AppError::InternalServerError => HttpResponse::InternalServerError()
-                .json("Internal Server Error, Please try later"),
+            AppError::InternalServerError(ref trace) => {
+                println!("Internal Server Error trace: {}", trace);
+                HttpResponse::InternalServerError()
+                .json("Internal Server Error, Please try later")
+            },
             AppError::BadRequest(ref message) => {
                 HttpResponse::BadRequest().json(message)
             }
@@ -49,9 +52,9 @@ impl From<DBError> for AppError {
                         info.details().unwrap_or_else(|| info.message()).to_string();
                     return AppError::BadRequest(message);
                 }
-                AppError::InternalServerError
+                AppError::InternalServerError(String::from("Database error"))
             }
-            _ => AppError::InternalServerError,
+            _ => AppError::InternalServerError(String::from("Database error")),
         }
     }
 }
