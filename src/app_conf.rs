@@ -63,6 +63,11 @@ pub fn get_listen_address() -> String {
     domain
 }
 
+#[cfg(debug_assertions)]
+pub fn get_base_url() -> String {
+    format!("http://{}", get_domain())
+}
+
 fn get_domain() -> String {
     std::env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string())
 }
@@ -125,4 +130,9 @@ pub fn connect_database() -> Pool {
 #[cfg(not(debug_assertions))]
 pub fn get_listen_address() -> String {
     String::from("0.0.0.0:8080")
+}
+
+#[cfg(not(debug_assertions))]
+pub fn get_base_url() -> String {
+    format!("https://{}", get_domain())
 }

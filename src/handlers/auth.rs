@@ -8,7 +8,7 @@ use crate::services::email::EmailService;
 use argon2::Config;
 use rand::Rng;
 use chrono::{Utc, NaiveDateTime};
-use crate::app_conf::SECRET_KEY;
+use crate::app_conf::{get_base_url, SECRET_KEY};
 
 #[derive(Debug, Deserialize)]
 pub struct AuthData {
@@ -88,7 +88,7 @@ fn t_ask_password_reset(
 
     match result {
         Ok(expire_time) => {
-            let url = format!("http://localhost:3000/reset_password.html?id={}", hash);
+            let url = format!("{}/reset_password.html?id={}", get_base_url(), hash);
             let expire_time = NaiveDateTime::from_timestamp(expire_time, 0)
                 .format("%c");
             let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}.</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
