@@ -108,6 +108,8 @@ pub fn set_env() {
     std::env::var("MAILGUN_MAIL_ADDRESS").expect("Missing MAILGUN_MAIL_ADDRESS env variable.");
     std::env::var("MAX_NB_WORKERS").expect("Missing MAX_NB_WORKERS env variable.");
     std::env::var("MAX_DB_CONNS_WORKER").expect("Missing MAX_DB_CONNS_WORKER env variable.");
+    std::env::var("AWS_ACCESS_KEY_ID").expect("Missing AWS_ACCESS_KEY_ID env variable.");
+    std::env::var("AWS_SECRET_ACCESS_KEY").expect("Missing AWS_SECRET_ACCESS_KEY env variable.");
 
     env_logger::init();
 }
