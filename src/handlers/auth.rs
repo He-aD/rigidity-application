@@ -1,5 +1,6 @@
 use actix_identity::Identity;
-use actix_web::{web, error::BlockingError,HttpResponse};
+use actix_web::{web, error::BlockingError, HttpResponse};
+use actix_web::http::StatusCode;
 use serde::Deserialize;
 use crate::errors::{AppResult, AppError};
 use crate::models::user;
@@ -145,7 +146,12 @@ pub async fn reset_password(
     match web::block(move || 
         t_reset_password(data, pool)).await {
         Ok(_) => {
-            Ok(HttpResponse::Ok().finish())
+            Ok(HttpResponse::TemporaryRedirect()
+                .status(StatusCode::SEE_OTHER)
+                .set_header(
+                    "Location", 
+                    "/login.html")
+                .finish())
         }
         Err(err) => match err {
             BlockingError::Error(error) => Err(error),

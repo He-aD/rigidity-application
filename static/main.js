@@ -10,7 +10,12 @@ function post(url = ``, data = {}) {
         redirect: 'follow', // manual, *follow, error
         referrer: 'no-referrer', // no-referrer, *client
         body: JSON.stringify(data), // body data type must match "Content-Type" header
-    }).then(response => response.json()); // parses response to JSON
+    }).then(response => {
+        if (response.redirected == true) {
+            window.location = response.url;
+        }
+        return response;
+    });
 }
 
 function put(url = ``, data = {}) {
@@ -25,5 +30,10 @@ function put(url = ``, data = {}) {
         redirect: 'follow', // manual, *follow, error
         referrer: 'no-referrer', // no-referrer, *client
         body: JSON.stringify(data), // body data type must match "Content-Type" header
-    }).then(response => response.json()); // parses response to JSON
+    }).then(response => {
+        if (response.redirected == true) {
+            window.location = response.url;
+        }
+        return response;
+    });
 }
