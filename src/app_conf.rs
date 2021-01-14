@@ -14,6 +14,11 @@ lazy_static::lazy_static! {
 }
 
 #[cfg(debug_assertions)]
+pub fn nb_worker() -> Option<u32> {
+    None
+}
+
+#[cfg(debug_assertions)]
 pub fn middleware_logger() -> middleware::Logger {
     middleware::Logger::default()
 }
@@ -63,6 +68,15 @@ fn get_domain() -> String {
 }
 
 #[cfg(not(debug_assertions))]
+pub fn nb_worker() -> Option<u32> {
+    let max_nb_workers: u32 = std::env::var("MAX_NB_WORKERS")
+        .expect("MAX_NB_WORKER must be set")
+        .parse()
+        .unwrap();
+    Some(max_nb_workers)
+}
+
+#[cfg(not(debug_assertions))]
 pub fn middleware_logger() -> middleware::Logger {
     middleware::Logger::default()
 }
@@ -87,16 +101,23 @@ pub fn set_env() {
     std::env::var("MAILGUN_DOMAIN").expect("Missing MAILGUN_DOMAIN env variable.");
     std::env::var("MAILGUN_KEY").expect("Missing MAILGUN_KEY env variable.");
     std::env::var("MAILGUN_MAIL_ADDRESS").expect("Missing MAILGUN_MAIL_ADDRESS env variable.");
-    
+    std::env::var("MAX_NB_WORKERS").expect("Missing MAX_NB_WORKERS env variable.");
+    std::env::var("MAX_DB_CONNS_WORKER").expect("Missing MAX_DB_CONNS_WORKER env variable.");
+
     env_logger::init();
 }
 
 #[cfg(not(debug_assertions))]
 pub fn connect_database() -> Pool {
     let database_url = std::env::var("POSTGRESQL_ADDON_URI").expect("POSTGRESQL_ADDON_URI must be set");
+    let max_size: u32 = std::env::var("MAX_DB_CONNS_WORKER")
+        .expect("MAX_DB_CONNS_WORKER must be set")
+        .parse()
+        .unwrap();
     // create db connection pool
     let manager = ConnectionManager::<PgConnection>::new(database_url);
     r2d2::Pool::builder()
+        .max_size(max_size)
         .build(manager)
         .expect("Failed to create pool.")
 }
