@@ -1,5 +1,6 @@
 table! {
-    users (email) {
+    users (id) {
+        id -> Int4,
         email -> Varchar,
         nickname -> Varchar,
         hash -> Varchar,

@@ -65,7 +65,7 @@ pub fn get_listen_address() -> String {
 
 #[cfg(debug_assertions)]
 pub fn get_base_url() -> String {
-    format!("http://{}", get_domain())
+    format!("http://{}", get_listen_address())
 }
 
 fn get_domain() -> String {

@@ -11,6 +11,7 @@ use crate::models::ORMResult;
 #[derive(Serialize, Deserialize, Queryable, AsChangeset)]
 #[changeset_options(treat_none_as_null="true")]
 pub struct User {
+    pub id: i32,
     pub email: String,
     pub nickname: String,
     #[serde(skip_serializing)]
