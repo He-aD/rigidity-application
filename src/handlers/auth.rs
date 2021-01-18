@@ -25,7 +25,7 @@ pub async fn login(
     match web::block(move || 
         t_login(auth_data, pool)).await {
         Ok(user) => {
-            id.remember(user.email.clone());
+            id.remember(user.id.to_string());
             Ok(HttpResponse::Ok().json(user))
         }
         Err(err) => match err {
