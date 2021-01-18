@@ -8,6 +8,7 @@ use super::{Pool};
 pub mod static_routes;
 pub mod open_routes;
 pub mod api_routes;
+pub mod ws_routes;
 
 lazy_static::lazy_static! {
     pub static ref SECRET_KEY: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));
@@ -27,8 +28,7 @@ pub fn middleware_logger() -> middleware::Logger {
 pub fn middleware_identity_service() -> IdentityService<CookieIdentityPolicy> {
     IdentityService::new(
         CookieIdentityPolicy::new(SECRET_KEY.as_bytes())
-            .name("auth")
-            .path("/api")
+            .name("rigidity-app")
             .domain(get_domain().as_str())
             .max_age_time(Duration::days(1))
             .secure(false), // this can only be true if you have https
@@ -90,8 +90,7 @@ pub fn middleware_logger() -> middleware::Logger {
 pub fn middleware_identity_service() -> IdentityService<CookieIdentityPolicy> {
     IdentityService::new(
         CookieIdentityPolicy::new(SECRET_KEY.as_bytes())
-            .name("auth")
-            .path("/api")
+            .name("rigidity-app")
             .domain(get_domain().as_str())
             .max_age_time(Duration::days(1))
             .secure(true), // this can only be true if you have https
@@ -110,6 +109,7 @@ pub fn set_env() {
     std::env::var("MAX_DB_CONNS_WORKER").expect("Missing MAX_DB_CONNS_WORKER env variable.");
     std::env::var("AWS_ACCESS_KEY_ID").expect("Missing AWS_ACCESS_KEY_ID env variable.");
     std::env::var("AWS_SECRET_ACCESS_KEY").expect("Missing AWS_SECRET_ACCESS_KEY env variable.");
+    std::env::var("SECRET_KEY").expect("Missing SECRET_KEY env variable.");
 
     env_logger::init();
 }

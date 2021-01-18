@@ -2,5 +2,7 @@ use actix_web::{web, Scope};
 use crate::handlers::*;
 
 pub fn get_all() -> Scope {
-    web::scope("/api")
+    web::scope("/api").service(
+        web::resource("/logout")
+            .route(web::post().to(auth::logout)))
 }

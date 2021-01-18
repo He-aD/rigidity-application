@@ -12,7 +12,7 @@ const AUTHORIZED_STATIC_PATHS: & [&str] = &[
 ];
 
 pub fn get_all() -> Scope {
-    web::scope("/")
+    web::scope("/static")
         .service(web::resource("/{html_file_path}")
             .route(web::get().to(static_file_http_response))
         )
@@ -24,6 +24,7 @@ async fn p404() -> Result<actix_files::NamedFile, io::Error> {
 
 async fn static_file_http_response(html_file_path: web::Path<String>) -> HttpResponse {
     // check if it's an authorized path
+    println!("{}", html_file_path);
     let path = html_file_path.to_string();
     let mut find = false;
     for p in AUTHORIZED_STATIC_PATHS {

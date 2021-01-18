@@ -16,7 +16,7 @@
       <input class="field" type="text" placeholder="email" id="email" /> <br />
       <input class="field" type="password" placeholder="password" id="password" /> <br />
       <input class="btn" type="submit" value="Validate credentials and enter the game" onclick="login()" /> <br />
-      <p><a href="/ask_password_reset.html">Reset password</a></p>
+      <p><a href="/static/ask_password_reset.html">Reset password</a></p>
     </div>
   </body>
 </html>
@@ -25,7 +25,7 @@
     let email = document.querySelector('#email');
     let password = document.querySelector('#password')
 
-    post('api-open/login', { email: email.value, password: password.value }).then(data => {
+    post('/api-open/login', { email: email.value, password: password.value }).then(data => {
       console.error(data);
     });
   }

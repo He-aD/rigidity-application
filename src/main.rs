@@ -1,5 +1,5 @@
 use actix_web::{App, HttpServer};
-use rigidity_application::app_conf;
+use rigidity_application::{middlewares, app_conf};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -8,6 +8,7 @@ async fn main() -> std::io::Result<()> {
     let http_server = HttpServer::new(move || {
         App::new()
             .data(app_conf::connect_database())
+            .wrap(middlewares::CheckLogin)
             .wrap(app_conf::middleware_logger())
             .wrap(app_conf::middleware_identity_service())
             .service(app_conf::open_routes::get_all())

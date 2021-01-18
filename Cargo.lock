@@ -2456,6 +2456,7 @@ dependencies = [
  "actix-files",
  "actix-identity",
  "actix-rt",
+ "actix-service",
  "actix-web",
  "chrono",
  "derive_more",

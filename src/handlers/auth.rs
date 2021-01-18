@@ -55,6 +55,13 @@ fn t_login(
     Err(AppError::BadRequest(String::from("Incorrect password.")))
 }
 
+pub async fn logout(
+    id: Identity,
+) -> AppResult<HttpResponse> {    
+    id.forget();
+    Ok(HttpResponse::Ok().finish())
+}
+
 #[derive(Debug, Deserialize)]
 pub struct AskPassData {
     pub email: String
@@ -89,7 +96,7 @@ fn t_ask_password_reset(
 
     match result {
         Ok(expire_time) => {
-            let url = format!("{}/reset_password.html?id={}", get_base_url(), hash);
+            let url = format!("{}/static/reset_password.html?id={}", get_base_url(), hash);
             let expire_time = NaiveDateTime::from_timestamp(expire_time, 0)
                 .format("%c");
             let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}.</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
