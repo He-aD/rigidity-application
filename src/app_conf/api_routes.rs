@@ -1,5 +1,5 @@
 use actix_web::{web, Scope};
-use crate::handlers::*;
+use crate::handlers::auth;
 
 pub fn get_all() -> Scope {
     web::scope("/api").service(

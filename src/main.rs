@@ -1,5 +1,5 @@
 use actix_web::{App, HttpServer};
-use rigidity_application::{middlewares, app_conf};
+use rigidity_application::{middlewares, app_conf, new_websocket_lobby};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -8,9 +8,11 @@ async fn main() -> std::io::Result<()> {
     let http_server = HttpServer::new(move || {
         App::new()
             .data(app_conf::connect_database())
+            .data(new_websocket_lobby())
             .wrap(middlewares::CheckLogin)
             .wrap(app_conf::middleware_logger())
             .wrap(app_conf::middleware_identity_service())
+            .route("/ws", app_conf::ws_routes::get())
             .service(app_conf::open_routes::get_all())
             .service(app_conf::api_routes::get_all())
             .service(app_conf::static_routes::get_all())
