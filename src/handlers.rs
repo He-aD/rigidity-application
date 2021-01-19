@@ -5,6 +5,7 @@ use crate::services::websocket::{new_connection, WebsocketLobby};
 use actix::Addr;
 
 pub mod auth;
+pub mod custom_room;
 
 pub async fn new_websocket(
     req: HttpRequest,
@@ -27,5 +28,5 @@ pub async fn new_websocket(
         }
     }
 
-    Err(AppError::InternalServerError(format!("Error while opening new websocket for user id: un")))
+    Err(AppError::Unauthorized)
 }

@@ -39,6 +39,14 @@ impl User {
 }
 
 pub fn get(
+    i_d: &i32, 
+    conn: &PgConnection
+) -> ORMResult<User> {
+    users.filter(id.eq(i_d))
+        .get_result::<User>(conn)
+}
+
+pub fn get_by_email(
     em8l: &str, 
     conn: &PgConnection
 ) -> ORMResult<User> {

@@ -41,7 +41,7 @@ fn t_login(
 ) -> AppResult<user::User> {
     let datas = auth_data.into_inner();
     let email = datas.email.clone();
-    match user::get(&email, &pool.get().unwrap()) {
+    match user::get_by_email(&email, &pool.get().unwrap()) {
         Ok(user) => {
             if user.is_password_ok(&datas.password)? {
                 return Ok(user);
