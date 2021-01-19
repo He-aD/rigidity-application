@@ -48,7 +48,7 @@ impl Actor for WsConn {
         let addr = ctx.address();
         self.lobby_addr
             .send(Connect {
-                addr: addr.recipient(),
+                addr: addr,
                 self_id: self.id,
             })
             .into_actor(self)

@@ -5,7 +5,7 @@ use crate::enums::{Maps, GameModes};
 use serde::{Deserialize};
 use crate::Pool;
 use actix_identity::Identity;
-use crate::services::websocket::WebsocketLobby;
+use crate::services::websocket::{BroadcastExceptMessage, WebsocketLobby};
 use actix::Addr;
 use dtos::CustomRoomDto;
 
@@ -81,14 +81,22 @@ pub async fn create(
 
 fn t_create(    
     create_data: web::Json<CreateData>,
-    id: i32,
+    user_id: i32,
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<CustomRoomDto> {
-    match custom_room::create(&id, create_data.into_inner(), &pool.get().unwrap()) {
+    match custom_room::create(&user_id, create_data.into_inner(), &pool.get().unwrap()) {
         Ok(tuple) => {
             match CustomRoomDto::new(tuple, &pool.get().unwrap()) {
-                Ok(dto) => Ok(dto),
+                Ok(dto) => {
+                    let msg = BroadcastExceptMessage {
+                        ids_to_except: vec![user_id],
+                        message: serde_json::to_string(&dto).unwrap()
+                    };
+                    
+                    let _ = ws.get_ref().do_send(msg);
+                    Ok(dto)
+                },
                 Err(err) => return Err(AppError::InternalServerError(err.to_string()))
             }
         }

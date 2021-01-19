@@ -1,4 +1,6 @@
-use actix::prelude::{Message, Recipient};
+use actix::prelude::Message;
+use actix::Addr;
+use super::ws::WsConn;
 
 //WsConn responds to this to pipe it through to the actual client
 #[derive(Message)]
@@ -9,7 +11,7 @@ pub struct WsMessage(pub String);
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Connect {
-    pub addr: Recipient<WsMessage>,
+    pub addr: Addr<WsConn>,
     pub self_id: i32,
 }
 
