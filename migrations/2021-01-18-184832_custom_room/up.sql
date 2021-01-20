@@ -9,7 +9,7 @@ CREATE DOMAIN uint2 AS int4
 CREATE TABLE custom_rooms (
   id SERIAL PRIMARY KEY,
   label VARCHAR(100) NOT NULL,
-  user_id INT NOT NULL,
+  user_id INT UNIQUE NOT NULL,
   nb_teams uint2 NOT NULL,
   max_player_per_team uint2 NOT NULL,
   current_game_mode enum_game_modes NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE custom_room_slots (
   custom_room_id INT NOT NULL,
   team uint2 NOT NULL,
   team_position uint2 NOT NULL,
-  user_id INT NOT NULL,
+  user_id INT UNIQUE NOT NULL,
   current_archetype enum_archetypes NOT NULL,
 
   CONSTRAINT fk_user

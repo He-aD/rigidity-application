@@ -4,7 +4,7 @@ use rigidity_application::{middlewares, app_conf, new_websocket_lobby};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     app_conf::set_env();
-    let ws_srv = new_websocket_lobby();
+    let ws_srv = new_websocket_lobby(); //important if clone in closure ref not properly tracked
 
     let http_server = HttpServer::new(move || {
         App::new()

@@ -42,7 +42,7 @@ fn t_get_all(
             Ok(results)
         }
         Err(err) => {
-            Err(AppError::InternalServerError(err.to_string()))
+            Err(AppError::BadRequest(err.to_string()))
         }
     }
 }
@@ -101,7 +101,7 @@ fn t_create(
             }
         }
         Err(err) => {
-            Err(AppError::InternalServerError(err.to_string()))
+            Err(AppError::BadRequest(err.to_string()))
         }
     }
 }
