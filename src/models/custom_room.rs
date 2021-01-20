@@ -161,6 +161,21 @@ pub fn update_slot(
     get(&custom_room_slot_form.get_custom_room_id(), conn)  
 } 
 
+pub fn update_slot_archetype(
+    user_id: &i32,
+    custom_room_id: &i32,
+    archetype: &Archetypes,
+    conn: &PgConnection
+) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_room_slots::dsl::{current_archetype, user_id as s_user_id, custom_room_slots};
+    
+    diesel::update(custom_room_slots.filter(s_user_id.eq(user_id)))
+        .set(current_archetype.eq(archetype))
+        .execute(conn)?;
+
+    get(custom_room_id, conn)
+}
+
 pub fn delete_slot_by_user_id(
     custom_room_id: &i32,
     user_id: &i32,

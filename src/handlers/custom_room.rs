@@ -1,4 +1,4 @@
-use crate::errors::{AppResult, AppError};
+use crate::{enums::Archetypes, errors::{AppResult, AppError}};
 use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
 use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}};
 use crate::models::custom_room::form::{CustomRoomSlotForm};
@@ -299,6 +299,68 @@ fn t_switch_slot(
                 &user_id, 
                 tuple,
                 String::from("slot"),
+                conn,
+                &ws_data
+            )
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
+pub async fn switch_archetype(
+    param: Path<(i32, Archetypes)>,
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    let (custom_room_id, archetype) = param.into_inner();
+    match web::block(move || 
+        t_switch_archetype(
+            custom_room_id,
+            archetype,
+            user_id.parse::<i32>().unwrap(),
+            ws,
+            pool)).await {
+        Ok(custom_room) => {
+            Ok(HttpResponse::Ok().json(custom_room))
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_switch_archetype(
+    custom_room_id: i32, 
+    archetype: Archetypes,
+    user_id: i32, 
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<CustomRoomDto> {
+    let conn = &pool.get().unwrap();
+    #[derive(Serialize)]
+    struct WsData<'a> {
+        pub user_id: &'a i32,
+        pub archetype: &'a Archetypes,
+    }
+
+    match custom_room::update_slot_archetype(
+        &user_id, 
+        &custom_room_id, 
+        &archetype,
+        conn) {
+        Ok(tuple) => {
+            let ws_data = WsData {
+                user_id: &user_id,
+                archetype: &archetype,
+            };
+            send_multi_forward_message(
+                ws,
+                &user_id, 
+                tuple,
+                String::from("select-archetype"),
                 conn,
                 &ws_data
             )

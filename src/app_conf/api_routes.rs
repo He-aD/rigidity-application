@@ -19,4 +19,7 @@ pub fn get_all() -> Scope {
         .service(
             web::resource("/matchmaking/custom-room/{id}/slot")
                 .route(web::put().to(custom_room::switch_slot)))
+        .service(
+            web::resource("/matchmaking/custom-room/{id}/select-archetype/{archetype}")
+                .route(web::put().to(custom_room::switch_archetype)))
 }
