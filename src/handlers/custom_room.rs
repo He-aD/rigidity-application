@@ -1,6 +1,6 @@
 use crate::errors::{AppResult, AppError};
 use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
-use crate::models::{custom_room};
+use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}};
 use crate::models::custom_room::form::{CustomRoomSlotForm};
 use crate::enums::{Maps, GameModes};
 use serde::{Deserialize, Serialize};
@@ -217,23 +217,116 @@ fn t_quit(
 
     match custom_room::delete_slot_by_user_id(&custom_room_id, &user_id, conn) {
         Ok(tuple) => {
-            match CustomRoomDto::new(tuple, conn) {
-                Ok(dto) => {
-                    let user_ids = dto.get_all_user_ids_except(&user_id);
-                    let ws_data = WsData {user_id: &user_id};
-                    let msg = MultiForwardMessage::new(
-                        &user_ids,
-                        ServerMessage::new(
-                            String::from("/matchmaking/custom-room"),
-                            String::from("quit"),
-                            &ws_data)
-                    );
-                    let _ = ws.get_ref().do_send(msg);
+            let ws_data = WsData {user_id: &user_id};
+            send_multi_forward_message(
+                ws,
+                &user_id, 
+                tuple,
+                String::from("quit"),
+                conn,
+                &ws_data
+            )
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
 
-                    Ok(dto)
-                },
-                Err(err) => Err(AppError::BadRequest(err.to_string()))
-            }
+#[derive(Debug, Deserialize)]
+pub struct SwitchSlotData {
+    pub team: i32,
+    pub team_position: i32,
+}
+
+pub async fn switch_slot(
+    Path(custom_room_id): Path<i32>,
+    id: Identity,
+    position: web::Json<SwitchSlotData>,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    match web::block(move || 
+        t_switch_slot(
+            custom_room_id,
+            user_id.parse::<i32>().unwrap(),
+            position,
+            ws,
+            pool)).await {
+        Ok(custom_room) => {
+            Ok(HttpResponse::Ok().json(custom_room))
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_switch_slot(
+    custom_room_id: i32, 
+    user_id: i32, 
+    position: web::Json<SwitchSlotData>,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<CustomRoomDto> {
+    let conn = &pool.get().unwrap();
+    #[derive(Serialize)]
+    struct WsData<'a> {
+        pub user_id: &'a i32,
+        pub nickname: &'a str,
+        pub team: &'a i32,
+        pub team_position: &'a i32
+    }
+
+    let p = position.into_inner();
+    let form = CustomRoomSlotForm::new_from_switch_slot(
+        &custom_room_id, 
+        &user_id,
+        &p,
+        conn)?;
+
+    match custom_room::update_slot(&user_id, &form, conn) {
+        Ok(tuple) => {
+            let user = user::get(&user_id, conn).unwrap();
+            let ws_data = WsData {
+                user_id: &user_id,
+                nickname: &user.nickname,
+                team: &p.team,
+                team_position: &p.team_position
+            };
+            send_multi_forward_message(
+                ws,
+                &user_id, 
+                tuple,
+                String::from("slot"),
+                conn,
+                &ws_data
+            )
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
+fn send_multi_forward_message<T: Serialize>(
+    ws: web::Data<Addr<WebsocketLobby>>,
+    user_id: &i32,
+    tuple: (CustomRoom, Vec<CustomRoomSlot>), 
+    typ: String,
+    conn: &diesel::PgConnection,
+    data: &T) -> AppResult<CustomRoomDto> {
+    match CustomRoomDto::new(tuple, conn) {
+        Ok(dto) => {
+            let user_ids = dto.get_all_user_ids_except(&user_id);
+            let msg = MultiForwardMessage::new(
+                &user_ids,
+                ServerMessage::new(
+                    String::from("/matchmaking/custom-room"),
+                    typ,
+                    data)
+            );
+            let _ = ws.get_ref().do_send(msg);
+
+            Ok(dto)
         },
         Err(err) => Err(AppError::BadRequest(err.to_string()))
     }

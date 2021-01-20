@@ -28,6 +28,10 @@ impl CustomRoom {
         let capacity = (self.nb_teams * self.max_player_per_team) as usize;
         capacity
     }
+
+    pub fn is_valid_slot(&self, team: &i32, team_position: &i32) -> bool {
+        *team < self.nb_teams && *team_position < self.max_player_per_team
+    }
 }
 
 #[derive(Insertable, Identifiable, Serialize, Deserialize, Queryable, Associations, PartialEq)]
@@ -43,16 +47,20 @@ pub struct CustomRoomSlot {
 
 pub fn get(id: &i32, conn: &PgConnection)
 -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
-    use crate::schema::custom_rooms::dsl::{id as cr_id, custom_rooms};
-
-    let custom_room = custom_rooms
-        .filter(cr_id.eq(id))
-        .get_result::<CustomRoom>(conn)?;
-
+    let custom_room = get_without_associations(id, conn)?;
     let slots = CustomRoomSlot::belonging_to(&custom_room)
         .load::<CustomRoomSlot>(conn)?;
     
     Ok((custom_room, slots))
+}
+
+pub fn get_without_associations(id: &i32, conn: &PgConnection)
+-> ORMResult<CustomRoom> {
+    use crate::schema::custom_rooms::dsl::{id as cr_id, custom_rooms};
+
+    custom_rooms
+        .filter(cr_id.eq(id))
+        .get_result::<CustomRoom>(conn)
 }
 
 pub fn get_all(conn: &PgConnection) 
@@ -75,6 +83,25 @@ pub fn get_all(conn: &PgConnection)
         }
         Err(err) => return Err(err)
     }
+}
+
+pub fn get_slot_by_position(
+    custom_room_id: &i32,
+    team: &i32, 
+    team_position: &i32, 
+    conn: &PgConnection
+) -> ORMResult<CustomRoomSlot> {
+    use crate::schema::custom_room_slots::dsl::{
+        team as s_team, 
+        team_position as s_team_position, 
+        custom_room_id as s_custom_room_id,
+        custom_room_slots};
+
+    custom_room_slots
+        .filter(s_team.eq(team))
+        .filter(s_team_position.eq(team_position))
+        .filter(s_custom_room_id.eq(custom_room_id))
+        .get_result::<CustomRoomSlot>(conn)
 }
 
 pub fn create(
@@ -115,6 +142,20 @@ pub fn create_slot(
 
     diesel::insert_into(custom_room_slots)
         .values(custom_room_slot_form)
+        .execute(conn)?;
+
+    get(&custom_room_slot_form.get_custom_room_id(), conn)  
+} 
+
+pub fn update_slot(
+    user_id: &i32,
+    custom_room_slot_form: &CustomRoomSlotForm,
+    conn: &PgConnection
+) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_room_slots::dsl::{user_id as s_user_id, custom_room_slots};
+    
+    diesel::update(custom_room_slots.filter(s_user_id.eq(user_id)))
+        .set(custom_room_slot_form)
         .execute(conn)?;
 
     get(&custom_room_slot_form.get_custom_room_id(), conn)  

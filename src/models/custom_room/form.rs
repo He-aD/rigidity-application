@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use crate::{schema::{custom_room_slots, custom_rooms}};
 use crate::enums::{Archetypes, GameModes, Maps};
-use crate::handlers::custom_room::{CreateData};
+use crate::handlers::custom_room::{CreateData, SwitchSlotData};
 use crate::errors::{AppError, AppResult};
-use crate::models::custom_room::{CustomRoom, CustomRoomSlot};
+use crate::models::custom_room::{get_without_associations, get_slot_by_position, CustomRoom, CustomRoomSlot};
+use diesel::{PgConnection};
 
 #[derive(Insertable)]
 #[table_name = "custom_rooms"]
@@ -29,14 +30,14 @@ impl<'a> CustomRoomForm<'a> {
     }
 }
 
-#[derive(Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[table_name = "custom_room_slots"]
 pub struct CustomRoomSlotForm<'a> {
     custom_room_id: &'a i32,
     team: i32,
     team_position: i32,
     user_id: &'a i32,
-    current_archetype: &'a Archetypes,
+    current_archetype: Option<&'a Archetypes>,
 }
 
 impl<'a> CustomRoomSlotForm<'a> {
@@ -49,7 +50,7 @@ impl<'a> CustomRoomSlotForm<'a> {
             team: 0,
             team_position: 0,
             user_id,
-            current_archetype: &Archetypes::Leader,
+            current_archetype: Some(&Archetypes::Leader),
         }
     }
 
@@ -95,7 +96,7 @@ impl<'a> CustomRoomSlotForm<'a> {
                                 user_id, 
                                 team,
                                 team_position: *team_position,
-                                current_archetype: &Archetypes::Leader,
+                                current_archetype: Some(&Archetypes::Leader),
                             })
                         }, 
                         None => return room_full_error
@@ -111,5 +112,41 @@ impl<'a> CustomRoomSlotForm<'a> {
 
     pub fn get_custom_room_id(&self) -> i32 {
         self.custom_room_id.clone()
+    }
+
+    pub fn new_from_switch_slot(
+        custom_room_id: &'a i32,
+        user_id: &'a i32,
+        slot_data: &SwitchSlotData,
+        conn: &PgConnection
+    ) -> AppResult<Self> {
+        match get_without_associations(custom_room_id, conn) {
+            Ok(custom_room) => {
+                if !custom_room.is_valid_slot(&slot_data.team, &slot_data.team_position) {
+                    return Err(AppError::BadRequest(String::from("Invalid slot position.")))
+                }
+
+                match get_slot_by_position(
+                    custom_room_id, 
+                    &slot_data.team, 
+                    &slot_data.team_position,
+                    conn) {
+                    Ok(_slot) => {
+                        Err(AppError::BadRequest(String::from("Slot already taken by someone else")))
+                    },
+                    Err(_err) => {
+                        Ok(CustomRoomSlotForm {
+                            custom_room_id: custom_room_id,
+                            team: slot_data.team,
+                            team_position: slot_data.team_position,
+                            user_id: user_id,
+                            current_archetype: None,
+                        })
+                    }
+                }
+            }, 
+            Err(_err) => Err(AppError::BadRequest(format!("Unknown custom room id: {}", custom_room_id)))
+        }
+        
     }
 }
