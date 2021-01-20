@@ -10,7 +10,7 @@ use crate::handlers::custom_room::{CreateData};
 use diesel::result::Error;
 use form::{CustomRoomForm, CustomRoomSlotForm};
 
-mod form;
+pub mod form;
 
 #[derive(Eq, Hash, Insertable, Identifiable, Serialize, Deserialize, Queryable, PartialEq)]
 pub struct CustomRoom {
@@ -21,6 +21,13 @@ pub struct CustomRoom {
     pub max_player_per_team: i32,
     pub current_game_mode: GameModes,
     pub current_map: Maps,
+}
+
+impl CustomRoom {
+    pub fn get_capacity(&self) -> usize {
+        let capacity = (self.nb_teams * self.max_player_per_team) as usize;
+        capacity
+    }
 }
 
 #[derive(Insertable, Identifiable, Serialize, Deserialize, Queryable, Associations, PartialEq)]
@@ -34,7 +41,7 @@ pub struct CustomRoomSlot {
     pub current_archetype: Archetypes,
 }
 
-fn get(id: i32, conn: &PgConnection)
+pub fn get(id: &i32, conn: &PgConnection)
 -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
     use crate::schema::custom_rooms::dsl::{id as cr_id, custom_rooms};
 
@@ -96,7 +103,19 @@ pub fn create(
                 user_id))
             .execute(conn)?;
 
-        get(custom_room_id, conn)       
+        get(&custom_room_id, conn)       
     })
 }
 
+pub fn create_custom_room_slot(
+    custom_room_slot_form: &CustomRoomSlotForm,
+    conn: &PgConnection
+) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_room_slots::dsl::{custom_room_slots};
+
+    diesel::insert_into(custom_room_slots)
+        .values(custom_room_slot_form)
+        .execute(conn)?;
+
+    get(&custom_room_slot_form.get_custom_room_id(), conn)  
+} 

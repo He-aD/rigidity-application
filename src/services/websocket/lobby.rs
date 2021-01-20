@@ -68,7 +68,7 @@ impl Handler<ForwardMessage> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: ForwardMessage, _: &mut Context<Self>) -> Self::Result {
-        self.send_message(&msg.message, &msg.id);
+        self.send_message(msg.get_message(), msg.get_id());
     }
 }
 
@@ -76,7 +76,7 @@ impl Handler<MultiForwardMessage> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: MultiForwardMessage, _: &mut Context<Self>) -> Self::Result {
-        self.send_many_message(&msg.message, &msg.ids);
+        self.send_many_message(msg.get_message(), msg.get_ids());
     }
 }
 
@@ -84,6 +84,6 @@ impl Handler<BroadcastExceptMessage> for Lobby {
     type Result = ();
 
     fn handle(&mut self, msg: BroadcastExceptMessage, _: &mut Context<Self>) -> Self::Result {
-        self.send_message_to_all_except(&msg.message, &msg.ids_to_except);
+        self.send_message_to_all_except(msg.get_message(), msg.get_ids_to_except());
     }
 }

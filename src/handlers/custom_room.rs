@@ -1,12 +1,13 @@
 use crate::errors::{AppResult, AppError};
-use actix_web::{web, error::BlockingError, HttpResponse};
+use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
 use crate::models::{custom_room};
+use crate::models::custom_room::form::{CustomRoomSlotForm};
 use crate::enums::{Maps, GameModes};
 use serde::{Deserialize};
 use crate::Pool;
 use actix_identity::Identity;
-use crate::services::websocket::{BroadcastExceptMessage, WebsocketLobby};
-use actix::Addr;
+use crate::services::websocket::{ServerMessage, BroadcastExceptMessage, WebsocketLobby, MultiForwardMessage};
+use actix::{Addr};
 use dtos::CustomRoomDto;
 
 mod dtos;
@@ -89,10 +90,14 @@ fn t_create(
         Ok(tuple) => {
             match CustomRoomDto::new(tuple, &pool.get().unwrap()) {
                 Ok(dto) => {
-                    let msg = BroadcastExceptMessage {
-                        ids_to_except: vec![user_id],
-                        message: serde_json::to_string(&dto).unwrap()
-                    };
+                    let msg = BroadcastExceptMessage::new(
+                        &vec![user_id],
+                        ServerMessage::new(
+                            String::from("/matchmaking/custom-room"),
+                            String::from("new"),
+                            &dto
+                        )
+                    );
                     
                     let _ = ws.get_ref().do_send(msg);
                     Ok(dto)
@@ -100,6 +105,75 @@ fn t_create(
                 Err(err) => return Err(AppError::InternalServerError(err.to_string()))
             }
         }
+        Err(err) => {
+            Err(AppError::BadRequest(err.to_string()))
+        }
+    }
+}
+
+pub async fn join(
+    Path(custom_room_id): Path<i32>,
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    match web::block(move || 
+        t_join(
+            custom_room_id,
+            user_id.parse::<i32>().unwrap(),
+            ws,
+            pool)).await {
+        Ok(custom_room) => {
+            Ok(HttpResponse::Ok().json(custom_room))
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_join(
+    custom_room_id: i32, 
+    user_id: i32, 
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<CustomRoomDto> {
+    let conn = &pool.get().unwrap();
+
+    match custom_room::get(&custom_room_id, conn) {
+        Ok(tuple) => {
+            let form = CustomRoomSlotForm::new_from_user_join(&custom_room_id, &user_id, &tuple)?;
+            match custom_room::create_custom_room_slot(&form, conn) {
+                Ok(tuple) => {
+                    match CustomRoomDto::new(tuple, &conn) {
+                        Ok(dto) => {
+                            let user_ids = dto.get_all_user_ids_except(&user_id);
+                            if let Some(slot_dto_index) = dto.get_slot_index_from_user_id(&user_id) {
+                                let msg = MultiForwardMessage::new(
+                                    &user_ids,
+                                    ServerMessage::new(
+                                        String::from("/matchmaking/custom-room"),
+                                        String::from("join"),
+                                        &dto.slots.get(slot_dto_index))
+                                );
+
+                                let _ = ws.get_ref().do_send(msg);
+                            } else {
+                                return Err(AppError::InternalServerError(String::from("Error in Custom room dtos."))) 
+                            }
+                            return Ok(dto);
+                        }, 
+                        Err(err) => {
+                            Err(AppError::BadRequest(err.to_string())) 
+                        }
+                    }
+
+                },
+                Err(err) => Err(AppError::BadRequest(err.to_string()))
+            }
+        },
         Err(err) => {
             Err(AppError::BadRequest(err.to_string()))
         }
