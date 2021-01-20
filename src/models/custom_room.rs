@@ -107,7 +107,7 @@ pub fn create(
     })
 }
 
-pub fn create_custom_room_slot(
+pub fn create_slot(
     custom_room_slot_form: &CustomRoomSlotForm,
     conn: &PgConnection
 ) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
@@ -119,3 +119,18 @@ pub fn create_custom_room_slot(
 
     get(&custom_room_slot_form.get_custom_room_id(), conn)  
 } 
+
+pub fn delete_slot_by_user_id(
+    custom_room_id: &i32,
+    user_id: &i32,
+    conn: &PgConnection
+) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_room_slots::dsl::{user_id as u_id, custom_room_slots};
+
+    conn.transaction::<_, Error, _>(move || {    
+        diesel::delete(custom_room_slots.filter(u_id.eq(user_id)))
+            .execute(conn)
+    })?;
+
+    get(custom_room_id, conn)
+}
