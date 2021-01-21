@@ -49,6 +49,16 @@ impl CustomRoomDto {
         result
     }
 
+    pub fn get_all_user_ids(&self) -> Vec<i32> {
+        let mut result = Vec::new();
+
+        for slot in &self.slots {
+            result.push(slot.user_id.clone());
+        }
+
+        result
+    }
+
     pub fn get_slot_index_from_user_id(&self, user_id: &i32) -> Option<usize> {
         let mut i = 0;
         for slot in &self.slots {

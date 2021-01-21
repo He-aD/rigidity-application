@@ -4,11 +4,12 @@ use rigidity_application::{middlewares, app_conf, new_websocket_lobby};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     app_conf::set_env();
-    let ws_srv = new_websocket_lobby(); //important if clone in closure ref not properly tracked
+    let conn = app_conf::connect_database();
+    let ws_srv = new_websocket_lobby(conn.clone()); //important if clone in closure ref not properly tracked
 
     let http_server = HttpServer::new(move || {
         App::new()
-            .data(app_conf::connect_database())
+            .data(conn.to_owned())
             .data(ws_srv.clone())
             .wrap(middlewares::CheckLogin)
             .wrap(app_conf::middleware_logger())

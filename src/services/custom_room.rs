@@ -10,13 +10,13 @@ use crate::enums::Archetypes;
 use diesel::{PgConnection};
 
 pub fn get_all(
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<Vec<CustomRoomDto>> {
     let mut results = Vec::new();
-    match custom_room::get_all(&pool) {
+    match custom_room::get_all(conn) {
         Ok(custom_rooms) => {
             for tuple in custom_rooms {
-                match CustomRoomDto::new(tuple, &pool) {
+                match CustomRoomDto::new(tuple, conn) {
                     Ok(vector) => results.push(vector),
                     Err(err) => return Err(AppError::InternalServerError(err.to_string()))
                 }
@@ -34,11 +34,11 @@ pub fn create(
     create_data: CreateData,
     user_id: i32,
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<CustomRoomDto> {
-    match custom_room::create(&user_id, create_data, &pool) {
+    match custom_room::create(&user_id, create_data, conn) {
         Ok(tuple) => {
-            match CustomRoomDto::new(tuple, &pool) {
+            match CustomRoomDto::new(tuple, conn) {
                 Ok(dto) => {
                     let msg = BroadcastExceptMessage::new(
                         &vec![user_id],
@@ -65,10 +65,8 @@ pub fn join(
     custom_room_id: i32, 
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<CustomRoomDto> {
-    let conn = &pool;
-
     match custom_room::get(&custom_room_id, conn) {
         Ok(tuple) => {
             let form = CustomRoomSlotForm::new_from_user_join(&custom_room_id, &user_id, &tuple)?;
@@ -111,9 +109,8 @@ pub fn quit(
     custom_room_id: i32, 
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<CustomRoomDto> {
-    let conn = &pool;
     #[derive(Serialize)]
     struct WsData<'a> {
         pub user_id: &'a i32
@@ -138,10 +135,8 @@ pub fn quit(
 pub fn delete(
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<()> {
-    let conn = &pool;
-
     match custom_room::get_by_user_id(&user_id, conn) {
         Ok(tuple) => {
             if let Err(err) = custom_room::delete(&user_id, conn) {
@@ -170,9 +165,8 @@ pub fn switch_slot(
     user_id: i32, 
     position: SwitchSlotData,
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<CustomRoomDto> {
-    let conn = &pool;
     #[derive(Serialize)]
     struct WsData<'a> {
         pub user_id: &'a i32,
@@ -214,9 +208,8 @@ pub fn switch_archetype(
     archetype: Archetypes,
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
-    pool:&PgConnection
+    conn: &PgConnection
 ) -> AppResult<CustomRoomDto> {
-    let conn = &pool;
     #[derive(Serialize)]
     struct WsData<'a> {
         pub user_id: &'a i32,
@@ -249,11 +242,10 @@ pub fn switch_archetype(
 pub fn kick(
     custom_room_id: i32, 
     user_id_to_kick: i32,
-    user_id: i32, 
+    o_user_id: Option<i32>, 
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<CustomRoomDto> {
-    let conn = &pool;
     match custom_room::delete_slot_by_user_id(&custom_room_id, &user_id_to_kick, conn) {
         Ok(tuple) => {
             #[derive(Serialize)]
@@ -263,13 +255,22 @@ pub fn kick(
             let data = WsData{user_id: user_id_to_kick};
             match CustomRoomDto::new(tuple, conn) {
                 Ok(dto) => {
-                    let mut user_ids = dto.get_all_user_ids_except(&user_id);
-                    user_ids.push(user_id_to_kick);
+                    let mut user_ids ;
+                    let message;
+                    if let Some(user_id) = o_user_id {
+                        user_ids = dto.get_all_user_ids_except(&user_id);
+                        user_ids.push(user_id_to_kick);
+                        message = String::from("kick");
+                    } else { // disconnect
+                        user_ids = dto.get_all_user_ids();
+                        message = String::from("disconnect");
+                    }
+
                     let msg = MultiForwardMessage::new(
                         &user_ids,
                         ServerMessage::new(
                             String::from("/matchmaking/custom-room"),
-                            String::from("kick"),
+                            message,
                             &data)
                     );
                     let _ = ws.do_send(msg);
@@ -287,9 +288,8 @@ pub fn start_matchmaking(
     custom_room_id: i32,
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<()> {
-    let conn = &pool;
     match custom_room::get(&custom_room_id, conn) {
         Ok(tuple) => {
             // call AWS matchmaking request here
@@ -317,9 +317,8 @@ pub fn stop_matchmaking(
     custom_room_id: i32,
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
-    pool: &PgConnection
+    conn: &PgConnection
 ) -> AppResult<()> {
-    let conn = &pool;
     match custom_room::get(&custom_room_id, conn) {
         Ok(tuple) => {
             // call AWS matchmaking request here
@@ -340,6 +339,36 @@ pub fn stop_matchmaking(
             Ok(())
         },
         Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
+pub fn handle_websocket_closing(
+    user_id: &i32, 
+    ws: Addr<WebsocketLobby>,
+    conn: &PgConnection
+) {
+    if let Ok(slot) = custom_room::get_slot_by_user_id(user_id, conn) {
+        match custom_room::get(&slot.custom_room_id, conn) {
+            Ok(tuple) => {
+                if tuple.0.user_id == *user_id {
+                    if let Err(_err) = delete(*user_id, ws, conn) {
+                        // futur logger service InternalServerError
+                    }
+                } else {
+                    if let Err(_err) = kick(
+                        slot.custom_room_id, 
+                        *user_id, 
+                        None, 
+                        ws,
+                        conn) {
+                        // futur logger service InternalServerError
+                    }
+                }
+            },
+            Err(_) => {
+                // futur logger service InternalServerError
+            }
+        }
     }
 }
 

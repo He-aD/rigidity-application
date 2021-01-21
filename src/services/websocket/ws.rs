@@ -29,7 +29,7 @@ impl WsConn {
         ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 println!("Disconnecting failed heartbeat");
-                act.lobby_addr.do_send(Disconnect { id: act.id});
+                act.lobby_addr.do_send(Disconnect { id: act.id, addr: act.lobby_addr.clone()});
                 ctx.stop();
                 return;
             }
@@ -63,7 +63,7 @@ impl Actor for WsConn {
     }
 
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
-        self.lobby_addr.do_send(Disconnect {id: self.id});
+        self.lobby_addr.do_send(Disconnect {id: self.id, addr: self.lobby_addr.clone()});
         Running::Stop
     }
 }

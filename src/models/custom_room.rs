@@ -118,6 +118,19 @@ pub fn get_slot_by_position(
         .get_result::<CustomRoomSlot>(conn)
 }
 
+pub fn get_slot_by_user_id(
+    user_id: &i32, 
+    conn: &PgConnection
+) -> ORMResult<CustomRoomSlot> {
+    use crate::schema::custom_room_slots::dsl::{
+        user_id as s_user_id, 
+        custom_room_slots};
+
+    custom_room_slots
+        .filter(s_user_id.eq(user_id))
+        .get_result::<CustomRoomSlot>(conn)
+}
+
 pub fn delete(
     user_id: &i32,
     conn: &PgConnection

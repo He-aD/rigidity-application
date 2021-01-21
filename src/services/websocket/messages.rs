@@ -1,6 +1,7 @@
 use actix::prelude::Message;
 use actix::Addr;
 use super::ws::WsConn;
+use super::lobby::Lobby;
 
 //WsConn responds to this to pipe it through to the actual client
 #[derive(Message)]
@@ -19,5 +20,6 @@ pub struct Connect {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
+    pub addr: Addr<Lobby>, 
     pub id: i32,
 }

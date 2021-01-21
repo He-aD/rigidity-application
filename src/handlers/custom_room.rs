@@ -191,7 +191,7 @@ pub async fn kick(
         service::kick(
             custom_room_id,
             user_id_to_kick,
-            user_id.parse::<i32>().unwrap(),
+            Some(user_id.parse::<i32>().unwrap()),
             ws.get_ref().to_owned(),
             &pool.get().unwrap())).await {
         Ok(custom_room) => {
@@ -249,4 +249,3 @@ pub async fn stop_matchmaking(
         }
     }
 }
-

@@ -18,6 +18,6 @@ mod services;
 mod errors;
 mod schema;
 
-pub fn new_websocket_lobby() -> Addr<services::websocket::WebsocketLobby> {
-    services::websocket::WebsocketLobby::default().start()
+pub fn new_websocket_lobby(pool: Pool) -> Addr<services::websocket::WebsocketLobby> {
+    services::websocket::WebsocketLobby::new(pool).start()
 }
