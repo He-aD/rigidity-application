@@ -482,6 +482,112 @@ fn t_kick(
     }
 }
 
+pub async fn start_matchmaking(
+    Path(custom_room_id): Path<i32>,
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    match web::block(move || 
+        t_start_matchmaking(
+            custom_room_id,
+            user_id.parse::<i32>().unwrap(),
+            ws,
+            pool)).await {
+        Ok(_custom_room) => {
+            Ok(HttpResponse::Ok().finish())
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_start_matchmaking(
+    custom_room_id: i32,
+    user_id: i32, 
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<()> {
+    let conn = &pool.get().unwrap();
+    match custom_room::get(&custom_room_id, conn) {
+        Ok(tuple) => {
+            // call AWS matchmaking request here
+
+            #[derive(Serialize)]
+            struct Empty{};
+            let data = &Empty{};
+            if let Err(err) = send_multi_forward_message(
+                ws, 
+                &user_id, 
+                tuple, 
+                String::from("start-matchmaking"), 
+                conn, 
+                data) {
+                    return Err(AppError::BadRequest(err.to_string()));
+                }
+            
+            Ok(())
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
+pub async fn stop_matchmaking(
+    Path(custom_room_id): Path<i32>,
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    match web::block(move || 
+        t_stop_matchmaking(
+            custom_room_id,
+            user_id.parse::<i32>().unwrap(),
+            ws,
+            pool)).await {
+        Ok(_custom_room) => {
+            Ok(HttpResponse::Ok().finish())
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_stop_matchmaking(
+    custom_room_id: i32,
+    user_id: i32, 
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<()> {
+    let conn = &pool.get().unwrap();
+    match custom_room::get(&custom_room_id, conn) {
+        Ok(tuple) => {
+            // call AWS matchmaking request here
+
+            #[derive(Serialize)]
+            struct Empty{};
+            let data = &Empty{};
+            if let Err(err) = send_multi_forward_message(
+                ws, 
+                &user_id, 
+                tuple, 
+                String::from("stop-matchmaking"), 
+                conn, 
+                data) {
+                    return Err(AppError::BadRequest(err.to_string()));
+                }
+            
+            Ok(())
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
 fn send_multi_forward_message<T: Serialize>(
     ws: web::Data<Addr<WebsocketLobby>>,
     user_id: &i32,
