@@ -25,7 +25,7 @@ where
 }
 
 fn not_auth(path: &str) -> bool {
-    let paths = ["/static", "/api-open"];
+    let paths = ["/static", "/api-open", "/aws"];
     paths.iter().any(|x| path.starts_with(x))
 }
 

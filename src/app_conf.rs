@@ -9,6 +9,7 @@ pub mod static_routes;
 pub mod open_routes;
 pub mod api_routes;
 pub mod ws_routes;
+pub mod aws_routes;
 
 lazy_static::lazy_static! {
     pub static ref SECRET_KEY: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));

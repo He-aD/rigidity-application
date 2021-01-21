@@ -17,6 +17,7 @@ async fn main() -> std::io::Result<()> {
             .route("/ws", app_conf::ws_routes::get())
             .service(app_conf::open_routes::get_all())
             .service(app_conf::api_routes::get_all())
+            .service(app_conf::aws_routes::get_all())
             .service(app_conf::static_routes::get_all())
             .default_service(app_conf::static_routes::default_service()) // 404
     });

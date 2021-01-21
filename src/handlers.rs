@@ -6,6 +6,7 @@ use actix::Addr;
 
 pub mod auth;
 pub mod custom_room;
+pub mod aws;
 
 pub async fn new_websocket(
     req: HttpRequest,
