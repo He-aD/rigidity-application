@@ -1,6 +1,5 @@
 use crate::{enums::Archetypes, errors::{AppResult, AppError}};
 use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
-use custom_room::get_by_user_id;
 use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}};
 use crate::models::custom_room::form::{CustomRoomSlotForm};
 use crate::enums::{Maps, GameModes};
@@ -416,6 +415,68 @@ fn t_switch_archetype(
                 conn,
                 &ws_data
             )
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
+pub async fn kick(
+    param: Path<(i32, i32)>,
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    let (custom_room_id, user_id_to_kick) = param.into_inner();
+    match web::block(move || 
+        t_kick(
+            custom_room_id,
+            user_id_to_kick,
+            user_id.parse::<i32>().unwrap(),
+            ws,
+            pool)).await {
+        Ok(custom_room) => {
+            Ok(HttpResponse::Ok().json(custom_room))
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_kick(
+    custom_room_id: i32, 
+    user_id_to_kick: i32,
+    user_id: i32, 
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<CustomRoomDto> {
+    let conn = &pool.get().unwrap();
+    match custom_room::delete_slot_by_user_id(&custom_room_id, &user_id_to_kick, conn) {
+        Ok(tuple) => {
+            #[derive(Serialize)]
+            struct WsData {
+                pub user_id: i32,
+            };
+            let data = WsData{user_id: user_id_to_kick};
+            match CustomRoomDto::new(tuple, conn) {
+                Ok(dto) => {
+                    let mut user_ids = dto.get_all_user_ids_except(&user_id);
+                    user_ids.push(user_id_to_kick);
+                    let msg = MultiForwardMessage::new(
+                        &user_ids,
+                        ServerMessage::new(
+                            String::from("/matchmaking/custom-room"),
+                            String::from("kick"),
+                            &data)
+                    );
+                    let _ = ws.get_ref().do_send(msg);
+        
+                    Ok(dto)
+                },
+                Err(err) => Err(AppError::BadRequest(err.to_string()))
+            }
         },
         Err(err) => Err(AppError::BadRequest(err.to_string()))
     }
