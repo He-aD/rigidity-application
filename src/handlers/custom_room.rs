@@ -1,5 +1,6 @@
 use crate::{enums::Archetypes, errors::{AppResult, AppError}};
 use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
+use custom_room::get_by_user_id;
 use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}};
 use crate::models::custom_room::form::{CustomRoomSlotForm};
 use crate::enums::{Maps, GameModes};
@@ -226,6 +227,57 @@ fn t_quit(
                 conn,
                 &ws_data
             )
+        },
+        Err(err) => Err(AppError::BadRequest(err.to_string()))
+    }
+}
+
+pub async fn delete(
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    match web::block(move || 
+        t_delete(
+            user_id.parse::<i32>().unwrap(),
+            ws,
+            pool)).await {
+        Ok(_) => {
+            Ok(HttpResponse::Ok().finish())
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+fn t_delete(
+    user_id: i32, 
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<()> {
+    let conn = &pool.get().unwrap();
+
+    match custom_room::get_by_user_id(&user_id, conn) {
+        Ok(tuple) => {
+            if let Err(err) = custom_room::delete(&user_id, conn) {
+                return Err(AppError::BadRequest(err.to_string()));
+            } 
+            #[derive(Serialize)]
+            struct Empty{};
+            if let Err(err) = send_multi_forward_message(
+                ws, 
+                &user_id, 
+                tuple, 
+                String::from("Delete"), 
+                conn, 
+                &Empty{}) {
+                    return Err(AppError::BadRequest(err.to_string()));
+                }
+
+            Ok(())
         },
         Err(err) => Err(AppError::BadRequest(err.to_string()))
     }

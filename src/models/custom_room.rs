@@ -63,6 +63,20 @@ pub fn get_without_associations(id: &i32, conn: &PgConnection)
         .get_result::<CustomRoom>(conn)
 }
 
+pub fn get_by_user_id(user_id: &i32, conn: &PgConnection)
+-> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_rooms::dsl::{user_id as cr_user_id, custom_rooms};
+
+    let custom_room = custom_rooms
+        .filter(cr_user_id.eq(user_id))
+        .get_result::<CustomRoom>(conn)?;
+
+    let slots = CustomRoomSlot::belonging_to(&custom_room)
+    .load::<CustomRoomSlot>(conn)?;
+    
+    Ok((custom_room, slots))
+}
+
 pub fn get_all(conn: &PgConnection) 
 -> ORMResult<HashMap<CustomRoom, Vec<CustomRoomSlot>>> {
     use crate::schema::custom_rooms::dsl::*;
@@ -102,6 +116,18 @@ pub fn get_slot_by_position(
         .filter(s_team_position.eq(team_position))
         .filter(s_custom_room_id.eq(custom_room_id))
         .get_result::<CustomRoomSlot>(conn)
+}
+
+pub fn delete(
+    user_id: &i32,
+    conn: &PgConnection
+) -> ORMResult<usize> {
+    use crate::schema::custom_rooms::dsl::{user_id as u_id, custom_rooms};
+
+    conn.transaction::<_, Error, _>(move || {    
+        diesel::delete(custom_rooms.filter(u_id.eq(user_id)))
+            .execute(conn)
+    })
 }
 
 pub fn create(

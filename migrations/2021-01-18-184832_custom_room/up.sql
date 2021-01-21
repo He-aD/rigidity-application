@@ -18,6 +18,7 @@ CREATE TABLE custom_rooms (
   CONSTRAINT fk_owner
     FOREIGN KEY(user_id) 
       REFERENCES users(id)
+      ON DELETE CASCADE
 );
 
 CREATE TABLE custom_room_slots (
@@ -30,8 +31,11 @@ CREATE TABLE custom_room_slots (
 
   CONSTRAINT fk_user
     FOREIGN KEY(user_id) 
-      REFERENCES users(id),
+      REFERENCES users(id)
+      ON DELETE CASCADE,
+
   CONSTRAINT fk_custom_room
     FOREIGN KEY(custom_room_id) 
       REFERENCES custom_rooms(id)
+      ON DELETE CASCADE
 );
