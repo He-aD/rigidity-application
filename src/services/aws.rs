@@ -4,6 +4,7 @@ use rusoto_core::request::HttpClient;
 use rusoto_core::region::Region;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use crate::services::{as_json_string};
 
 pub async fn get_gamelift_client() -> GameLiftClient {
     let cred = EnvironmentProvider::default();
@@ -80,7 +81,7 @@ pub struct FlexMatchSucceededDetail {
     pub e_type: FlexMatchEvents,
     #[serde(rename = "matchId")]
     pub match_id: String,
-    #[serde(rename = "gameSessionInfo")]
+    #[serde(rename = "gameSessionInfo", with = "as_json_string")]
     pub game_session_info: FlexMatchGameSession
 }
 
