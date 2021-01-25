@@ -14,6 +14,7 @@ CREATE TABLE custom_rooms (
   max_player_per_team uint2 NOT NULL,
   current_game_mode enum_game_modes NOT NULL,
   current_map enum_maps NOT NULL,
+  matchmaking_ticket uuid NULL,
 
   CONSTRAINT fk_owner
     FOREIGN KEY(user_id) 

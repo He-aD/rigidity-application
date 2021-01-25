@@ -4,6 +4,7 @@ use crate::enums::{GameModes, Maps, Archetypes};
 use crate::models::user;
 use diesel::{PgConnection};
 use crate::models::ORMResult;
+use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct CustomRoomDto {
@@ -14,6 +15,7 @@ pub struct CustomRoomDto {
     pub max_player_per_team: i32,
     pub game_mode: GameModes,
     pub map: Maps,
+    pub matchmaking_ticket: Option<Uuid>,
     pub slots: Vec<CustomRoomSlotDto>
 }
 
@@ -33,6 +35,7 @@ impl CustomRoomDto {
             max_player_per_team: tuple.0.max_player_per_team,
             game_mode: tuple.0.current_game_mode,
             map: tuple.0.current_map,
+            matchmaking_ticket: tuple.0.matchmaking_ticket,
             slots: slots,
         })
     }

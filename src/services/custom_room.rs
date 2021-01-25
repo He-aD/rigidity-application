@@ -1,5 +1,6 @@
 use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}};
 use actix::{Addr};
+use rusoto_gamelift::*;
 use crate::services::websocket::{ServerMessage, BroadcastExceptMessage, WebsocketLobby, MultiForwardMessage};
 use crate::models::custom_room::form::{CustomRoomSlotForm};
 use serde::{Serialize};
@@ -8,6 +9,7 @@ use crate::handlers::custom_room::{CreateData, SwitchSlotData};
 use crate::errors::{AppResult, AppError};
 use crate::enums::Archetypes;
 use diesel::{PgConnection};
+use uuid::Uuid;
 
 pub fn get_all(
     conn: &PgConnection
@@ -284,59 +286,103 @@ pub fn kick(
     }
 }
 
-pub fn start_matchmaking(
+pub async fn start_matchmaking(
     custom_room_id: i32,
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
+    gamelift: &GameLiftClient,
     conn: &PgConnection
 ) -> AppResult<()> {
     match custom_room::get(&custom_room_id, conn) {
         Ok(tuple) => {
-            // call AWS matchmaking request here
+            if tuple.0.user_id != user_id {
+                return Err(AppError::BadRequest(String::from("Only the room owner can start matchmaking.")))
+            }
 
-            #[derive(Serialize)]
-            struct Empty{};
-            let data = &Empty{};
-            if let Err(err) = send_multi_forward_message(
-                ws, 
-                &user_id, 
-                tuple, 
-                String::from("start-matchmaking"), 
-                conn, 
-                data) {
-                    return Err(AppError::BadRequest(err.to_string()));
+            let ticket_id = Uuid::new_v4();
+            let start_matchmaking_input = tuple.0.get_start_matchmaking_input(&tuple.1, &ticket_id);
+            match gamelift.start_matchmaking(start_matchmaking_input).await {
+                Ok(result) => {
+                    if let Some(_matchmaking_ticket) = result.matchmaking_ticket {                                               
+                        if let Err(err) = custom_room::update_ticket(
+                            &custom_room_id, 
+                            &Some(ticket_id), 
+                            conn) {
+                            return Err(AppError::InternalServerError(err.to_string()));
+                        }
+    
+                        #[derive(Serialize)]
+                        struct Empty{};
+                        let data = &Empty{};
+                        if let Err(err) = send_multi_forward_message(
+                            ws, 
+                            &user_id, 
+                            tuple, 
+                            String::from("start-matchmaking"), 
+                            conn, 
+                            data) {
+                            return Err(AppError::BadRequest(err.to_string()));
+                        }
+                        
+                        return Ok(())
+                    }
+                    
+                    Err(AppError::InternalServerError(String::from("Problem with aws matchmaking.")))
+                }, 
+                Err(err) => {
+                    Err(AppError::BadRequest(err.to_string()))
                 }
-            
-            Ok(())
+            }
         },
         Err(err) => Err(AppError::BadRequest(err.to_string()))
     }
 }
 
-pub fn stop_matchmaking(
+pub async fn stop_matchmaking(
     custom_room_id: i32,
     user_id: i32, 
     ws: Addr<WebsocketLobby>,
+    gamelift: &GameLiftClient,
     conn: &PgConnection
 ) -> AppResult<()> {
     match custom_room::get(&custom_room_id, conn) {
         Ok(tuple) => {
-            // call AWS matchmaking request here
+            if tuple.0.user_id != user_id {
+                return Err(AppError::BadRequest(String::from("Only the room owner can stop matchmaking.")))
+            }
+            if tuple.0.matchmaking_ticket == None {
+                return Err(AppError::BadRequest(String::from("No matchmaking started for this room.")))
+            }
 
-            #[derive(Serialize)]
-            struct Empty{};
-            let data = &Empty{};
-            if let Err(err) = send_multi_forward_message(
-                ws, 
-                &user_id, 
-                tuple, 
-                String::from("stop-matchmaking"), 
-                conn, 
-                data) {
-                    return Err(AppError::BadRequest(err.to_string()));
+            match gamelift.stop_matchmaking(StopMatchmakingInput {
+                ticket_id: tuple.0.matchmaking_ticket.unwrap().to_string()
+            }).await {
+                Ok(_result) => {
+                    if let Err(err) = custom_room::update_ticket(
+                        &custom_room_id, 
+                        &None, 
+                        conn) {
+                        return Err(AppError::InternalServerError(err.to_string()));
+                    }
+                    #[derive(Serialize)]
+                    struct Empty{};
+                    let data = &Empty{};
+                    if let Err(err) = send_multi_forward_message(
+                        ws, 
+                        &user_id, 
+                        tuple, 
+                        String::from("stop-matchmaking"), 
+                        conn, 
+                        data) {
+                            return Err(AppError::BadRequest(err.to_string()));
+                        }
+                    
+                    Ok(())
+                },            
+                Err(err) => {
+                    Err(AppError::BadRequest(err.to_string()))
                 }
-            
-            Ok(())
+            }
         },
         Err(err) => Err(AppError::BadRequest(err.to_string()))
     }

@@ -1,5 +1,6 @@
 use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Formatter, Result, Display};
 
 #[derive(Eq, Hash, Deserialize, PartialEq, Serialize, Debug, DbEnum)]
 #[PgType = "enum_archetypes"]
@@ -11,6 +12,12 @@ pub enum Archetypes {
     Healer,
     #[db_rename = "spiker"]
     Spiker
+}
+
+impl Display for Archetypes {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Eq, Hash, Deserialize, PartialEq, Serialize, Debug, DbEnum)]

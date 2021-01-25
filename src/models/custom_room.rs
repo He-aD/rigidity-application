@@ -9,6 +9,8 @@ use std::cmp::Eq;
 use crate::handlers::custom_room::{CreateData};
 use diesel::result::Error;
 use form::{CustomRoomForm, CustomRoomSlotForm};
+use uuid::Uuid;
+use rusoto_gamelift::{Player, StartMatchmakingInput, AttributeValue};
 
 pub mod form;
 
@@ -21,6 +23,7 @@ pub struct CustomRoom {
     pub max_player_per_team: i32,
     pub current_game_mode: GameModes,
     pub current_map: Maps,
+    pub matchmaking_ticket: Option<Uuid>,
 }
 
 impl CustomRoom {
@@ -31,6 +34,27 @@ impl CustomRoom {
 
     pub fn is_valid_slot(&self, team: &i32, team_position: &i32) -> bool {
         *team < self.nb_teams && *team_position < self.max_player_per_team
+    }
+
+    pub fn get_start_matchmaking_input(&self, slots: &Vec<CustomRoomSlot>, ticket_id: &Uuid) -> StartMatchmakingInput {
+        let mut players = Vec::new();
+
+        for slot in slots {
+            let attributes = slot.get_gamelift_attributes();
+
+            players.push(Player {
+                latency_in_ms: None,
+                player_attributes: Some(attributes),
+                player_id: Some(slot.user_id.to_string()),
+                team: Some(slot.team.to_string()),
+            });
+        }
+
+        StartMatchmakingInput {
+            configuration_name: String::from("CustomGame"),
+            players: players,
+            ticket_id: Some(ticket_id.to_string()),
+        }
     }
 }
 
@@ -43,6 +67,32 @@ pub struct CustomRoomSlot {
     pub team_position: i32,
     pub user_id: i32,
     pub current_archetype: Archetypes,
+}
+
+impl CustomRoomSlot {
+    pub fn get_gamelift_attributes(&self) -> HashMap<String, AttributeValue> {
+        let mut attributes = HashMap::new();
+        attributes.insert(String::from("team"), AttributeValue { 
+            s: None,
+            n: Some(self.team as f64),
+            sdm: None,
+            sl: None
+        });
+        attributes.insert(String::from("team_position"), AttributeValue { 
+            s: None,
+            n: Some(self.team_position as f64),
+            sdm: None,
+            sl: None
+        });
+        attributes.insert(String::from("archetype"), AttributeValue { 
+            s: Some(self.current_archetype.to_string()),
+            n: None,
+            sdm: None,
+            sl: None
+        });
+
+        attributes
+    }
 }
 
 pub fn get(id: &i32, conn: &PgConnection)
@@ -171,6 +221,20 @@ pub fn create(
 
         get(&custom_room_id, conn)       
     })
+}
+
+pub fn update_ticket(
+    custom_room_id: &i32,
+    ticket_id: &Option<Uuid>,
+    conn: &PgConnection
+) -> ORMResult<()> {
+    use crate::schema::custom_rooms::dsl::{matchmaking_ticket, id, custom_rooms};
+    
+    diesel::update(custom_rooms.filter(id.eq(custom_room_id)))
+        .set(matchmaking_ticket.eq(ticket_id))
+        .execute(conn)?;
+
+    Ok(())
 }
 
 pub fn create_slot(

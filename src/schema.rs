@@ -24,6 +24,7 @@ table! {
         max_player_per_team -> Int4,
         current_game_mode -> Enum_game_modes,
         current_map -> Enum_maps,
+        matchmaking_ticket -> Nullable<Uuid>,
     }
 }
 

@@ -6,6 +6,7 @@ use crate::Pool;
 use actix_identity::Identity;
 use crate::services::{custom_room as service, websocket::WebsocketLobby};
 use actix::{Addr};
+use rusoto_gamelift::GameLiftClient;
 
 pub mod dtos;
 
@@ -208,21 +209,21 @@ pub async fn start_matchmaking(
     Path(custom_room_id): Path<i32>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
+    gamelift: web::Data<GameLiftClient>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     let user_id = id.identity().unwrap();
-    match web::block(move || 
-        service::start_matchmaking(
+       match service::start_matchmaking(
             custom_room_id,
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
+            gamelift.get_ref(),
+            &pool.get().unwrap()).await {
         Ok(_custom_room) => {
             Ok(HttpResponse::Ok().finish())
         }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        Err(err) => {
+            Err(err)
         }
     }
 }
@@ -231,21 +232,21 @@ pub async fn stop_matchmaking(
     Path(custom_room_id): Path<i32>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
+    gamelift: web::Data<GameLiftClient>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     let user_id = id.identity().unwrap();
-    match web::block(move || 
-        service::stop_matchmaking(
+    match service::stop_matchmaking(
             custom_room_id,
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
+            gamelift.get_ref(),
+            &pool.get().unwrap()).await {
         Ok(_custom_room) => {
             Ok(HttpResponse::Ok().finish())
         }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        Err(err) => {
+            Err(err)
         }
     }
 }
