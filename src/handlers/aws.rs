@@ -7,7 +7,7 @@ use crate::services::aws::*;
 use crate::services::custom_room;
 use actix::{Addr};
 use crate::Pool;
-use crate::services::{websocket::WebsocketLobby};
+use crate::services::{as_json_string, websocket::WebsocketLobby};
 
 pub async fn sns(
     req: HttpRequest,
@@ -75,7 +75,7 @@ async fn handle_sns_notification(
 ) -> AppResult<HttpResponse> {
     #[derive(Deserialize)]
     struct SnsData {
-        #[serde(rename = "Message")]
+        #[serde(rename = "Message", with = "as_json_string")]
         pub message: FlexMatchData<FlexMatchDetail>,
     }
 
