@@ -3,7 +3,6 @@ use rusoto_core::credential::{EnvironmentProvider};
 use rusoto_core::request::HttpClient;
 use rusoto_core::region::Region;
 use serde::Deserialize;
-use rusoto_core::region;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 pub async fn get_gamelift_client() -> GameLiftClient {
@@ -39,7 +38,7 @@ pub struct FlexMatchData<T>
 {
     pub id: String,
     pub account: String,
-    pub region: region::Region,
+    pub region: String,
     pub resources: Vec<String>,
     pub detail: T
 }
@@ -103,5 +102,6 @@ pub struct FlexMatchPlayerGameSession {
 
 #[derive(Deserialize, Debug)]
 pub struct FlexMatchTicket {
+    #[serde(rename = "ticketId")]
     pub ticket_id: String
 }

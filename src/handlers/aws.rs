@@ -97,7 +97,7 @@ async fn handle_sns_notification(
                                     data.message,
                                     ws.get_ref().to_owned(),
                                     &pool.get().unwrap()
-                                ).await {
+                                ) {
                                     return Err(err)
                                 }
                             }

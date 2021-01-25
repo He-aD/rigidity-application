@@ -389,7 +389,7 @@ pub async fn stop_matchmaking(
     }
 }
 
-pub async fn matchmaking_succeeded(
+pub fn matchmaking_succeeded(
     data: FlexMatchData<FlexMatchSucceededDetail>,
     ws: Addr<WebsocketLobby>,
     conn: &PgConnection

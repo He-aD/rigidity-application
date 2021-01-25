@@ -1,11 +1,8 @@
 use actix_web::{App, HttpServer};
 use rigidity_application::{middlewares, services::aws::get_gamelift_client, app_conf, new_websocket_lobby};
 
-#[tokio::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let local = tokio::task::LocalSet::new();
-    let sys = actix_rt::System::run_in_tokio("server", &local);
-
     app_conf::set_env();
     let conn = app_conf::connect_database();
     let ws_srv = new_websocket_lobby(conn.clone()); //important if clone in closure ref not properly tracked
@@ -30,13 +27,12 @@ async fn main() -> std::io::Result<()> {
     if let Some(max_nb_workers) = app_conf::nb_worker() {
         http_server
             .workers(max_nb_workers as usize)
-            .bind(app_conf::get_listen_address()).unwrap()
+            .bind(app_conf::get_listen_address())?
             .run()
-            .await.unwrap();
+            .await
     } else {
-        http_server.bind(app_conf::get_listen_address()).unwrap()
+        http_server.bind(app_conf::get_listen_address())?
             .run()
-            .await.unwrap();
+            .await
     }
-    sys.await
 }

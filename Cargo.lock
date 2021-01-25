@@ -2567,7 +2567,6 @@ dependencies = [
  "serde_json",
  "sparkpost",
  "time 0.2.23",
- "tokio 0.2.24",
  "uuid 0.8.1",
 ]
 
