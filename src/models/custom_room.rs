@@ -4,7 +4,7 @@ use diesel::{PgConnection};
 use serde::{Deserialize, Serialize};
 use crate::enums::{Archetypes, GameModes, Maps};
 use crate::models::ORMResult;
-use std::collections::HashMap;
+use std::{collections::HashMap};
 use std::cmp::Eq;
 use crate::handlers::custom_room::{CreateData};
 use diesel::result::Error;
@@ -119,6 +119,20 @@ pub fn get_by_user_id(user_id: &i32, conn: &PgConnection)
 
     let custom_room = custom_rooms
         .filter(cr_user_id.eq(user_id))
+        .get_result::<CustomRoom>(conn)?;
+
+    let slots = CustomRoomSlot::belonging_to(&custom_room)
+    .load::<CustomRoomSlot>(conn)?;
+    
+    Ok((custom_room, slots))
+}
+
+pub fn get_by_ticket_id(ticket_id: Uuid, conn: &PgConnection)
+-> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_rooms::dsl::{matchmaking_ticket, custom_rooms};
+    
+    let custom_room = custom_rooms
+        .filter(matchmaking_ticket.eq(ticket_id))
         .get_result::<CustomRoom>(conn)?;
 
     let slots = CustomRoomSlot::belonging_to(&custom_room)

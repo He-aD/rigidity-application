@@ -3,10 +3,17 @@ use futures::StreamExt;
 use crate::errors::{AppError, AppResult};
 use serde_json::{from_slice};
 use serde::Deserialize;
+use crate::services::aws::*;
+use crate::services::custom_room;
+use actix::{Addr};
+use crate::Pool;
+use crate::services::{websocket::WebsocketLobby};
 
 pub async fn sns(
     req: HttpRequest,
     mut stream: Payload,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     let error = Err(AppError::BadRequest(String::from("x-amz-sns-message-type header is unknown or missing.")));
 
@@ -26,7 +33,7 @@ pub async fn sns(
                     return handle_sns_subscription(body).await
                 },
                 "Notification" => {
-                    return handle_sns_notification(body)
+                    return handle_sns_notification(body,ws,pool).await
                 },
                 _ => {
                     return error
@@ -42,15 +49,15 @@ async fn handle_sns_subscription(
     body: web::BytesMut
 ) -> AppResult<HttpResponse> {
     #[derive(Deserialize)]
-    #[allow(non_snake_case)]
     struct SnsData {
-        pub SubscribeURL: String
+        #[serde(rename = "SubscribeURL")]
+        pub subscribe_url: String
     }
     if let Ok(obj) = from_slice::<SnsData>(&body) {
         let obj: SnsData = obj;
 
         let client = client::Client::default();
-        match client.get(obj.SubscribeURL).send().await {
+        match client.get(obj.subscribe_url).send().await {
             Ok(_) => return Ok(HttpResponse::Ok().finish()),
             Err(err) => {
                 return Err(AppError::BadRequest(err.to_string()))
@@ -61,17 +68,62 @@ async fn handle_sns_subscription(
     Err(AppError::BadRequest(String::from("Json body has wrong format.")))    
 }
 
-fn handle_sns_notification(
-    body: web::BytesMut
+async fn handle_sns_notification(
+    body: web::BytesMut,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     #[derive(Deserialize)]
-    #[allow(non_snake_case)]
     struct SnsData {
-        pub Message: String
+        #[serde(rename = "Message")]
+        pub message: FlexMatchData<FlexMatchDetail>,
     }
-    if let Ok(_obj) = from_slice::<SnsData>(&body) {
-        
 
+    if let Ok(obj) = from_slice::<SnsData>(&body) {
+        match obj.message.detail.e_type {
+            FlexMatchEvents::MatchmakingSucceeded => {
+                #[derive(Deserialize)]
+                struct SnsData {
+                    #[serde(rename = "Message")]
+                    pub message: FlexMatchData<FlexMatchSucceededDetail>,
+                }
+
+                match obj.message.get_configuration() {
+                    Ok(conf) => {
+                        match conf {
+                            GameLiftConfiguration::CustomGame => {
+                                let data = from_slice::<SnsData>(&body).unwrap();
+                                if let Err(err) = custom_room::matchmaking_succeeded(
+                                    data.message,
+                                    ws.get_ref().to_owned(),
+                                    &pool.get().unwrap()
+                                ).await {
+                                    return Err(err)
+                                }
+                            }
+                        }
+                    },
+                    Err(err) => return Err(AppError::BadRequest(err))
+                }
+            },
+            FlexMatchEvents::MatchmakingTimedOut |
+            FlexMatchEvents::MatchmakingCancelled |
+            FlexMatchEvents::MatchmakingFailed => {
+                let ticket_id = &obj.message.detail.tickets[0].ticket_id;
+                if let Err(err) = custom_room::matchmaking_failed(
+                    obj.message.detail.e_type, 
+                    ticket_id,
+                    ws.get_ref().to_owned(), 
+                    &pool.get().unwrap()
+                ).await {
+                    return Err(err)
+                }
+            }
+           _ => {
+                
+           }
+        }
+        return Ok(HttpResponse::Ok().finish())
     }
 
     Err(AppError::BadRequest(String::from("Json body has wrong format.")))   

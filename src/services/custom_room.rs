@@ -1,7 +1,7 @@
 use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}};
 use actix::{Addr};
 use rusoto_gamelift::*;
-use crate::services::websocket::{ServerMessage, BroadcastExceptMessage, WebsocketLobby, MultiForwardMessage};
+use crate::services::websocket::{ServerMessage, BroadcastExceptMessage, WebsocketLobby, MultiForwardMessage, ForwardMessage};
 use crate::models::custom_room::form::{CustomRoomSlotForm};
 use serde::{Serialize};
 use crate::handlers::custom_room::dtos::CustomRoomDto;
@@ -10,6 +10,7 @@ use crate::errors::{AppResult, AppError};
 use crate::enums::Archetypes;
 use diesel::{PgConnection};
 use uuid::Uuid;
+use crate::services::aws::{FlexMatchEvents, FlexMatchData, FlexMatchSucceededDetail};
 
 pub fn get_all(
     conn: &PgConnection
@@ -388,6 +389,99 @@ pub async fn stop_matchmaking(
     }
 }
 
+pub async fn matchmaking_succeeded(
+    data: FlexMatchData<FlexMatchSucceededDetail>,
+    ws: Addr<WebsocketLobby>,
+    conn: &PgConnection
+) -> AppResult<()> {
+    let ticket_id = Uuid::parse_str(&data.detail.tickets[0].ticket_id).unwrap();
+    
+    match custom_room::get_by_ticket_id(ticket_id, conn) {
+        Ok((custom_room, slots)) => {
+            #[derive(Serialize)]
+            struct WsData<'a> {
+                pub ip_address: &'a str,
+                pub port: &'a i32,
+                pub player_id: &'a str,
+                pub player_session_id: &'a str
+            }
+            
+            for slot in slots {
+                let str_user_id = slot.user_id.to_string();
+                for player in &data.detail.game_session_info.players {
+                    if player.player_id == str_user_id {
+                        let ws_data = WsData {
+                            ip_address: &data.detail.game_session_info.ip_address,
+                            port: &data.detail.game_session_info.port,
+                            player_id: &player.player_id,
+                            player_session_id: &player.player_session_id
+                        };
+
+                        let msg = ForwardMessage::new(
+                            &slot.user_id,
+                            ServerMessage::new(
+                                String::from("/matchmaking/custom-room"),
+                                String::from("matchmaking-succeeded"),
+                                &ws_data)
+                        );
+                        let _ = ws.do_send(msg);   
+                        break;
+                    }        
+                }
+            }
+                
+            if let Err(err) = custom_room::delete(&custom_room.user_id, conn) {
+                return Err(AppError::InternalServerError(err.to_string()))
+            }
+        },
+        Err(err) => {
+            return Err(AppError::InternalServerError(err.to_string()))
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn matchmaking_failed(
+    reason: FlexMatchEvents,
+    ticket_id: &str,
+    ws: Addr<WebsocketLobby>,
+    conn: &PgConnection
+) -> AppResult<()> {
+    let uuid_ticket_id = Uuid::parse_str(ticket_id).unwrap();
+    match custom_room::get_by_ticket_id(uuid_ticket_id, conn) {
+        Ok((custom_room, slots)) => {
+            #[derive(Serialize)]
+            struct WsData {
+                pub reason: String
+            }
+
+            let mut user_ids = Vec::new();
+            for slot in slots {
+                user_ids.push(slot.user_id);
+            }
+
+            let msg = MultiForwardMessage::new(
+                &user_ids,
+                ServerMessage::new(
+                    String::from("/matchmaking/custom-room"),
+                    String::from("matchmaking-failed"),
+                    &WsData {reason: reason.to_string()})
+            );
+            let _ = ws.do_send(msg); 
+            
+            if let Err(err) = custom_room::update_ticket(&custom_room.id, &None, conn) {
+                return Err(AppError::InternalServerError(err.to_string()))
+            }
+        },
+        Err(err) => {
+            return Err(AppError::InternalServerError(err.to_string()))
+        }
+    }
+
+    Ok(())
+}
+
 pub fn handle_websocket_closing(
     user_id: &i32, 
     ws: Addr<WebsocketLobby>,
@@ -424,7 +518,8 @@ fn send_multi_forward_message<T: Serialize>(
     tuple: (CustomRoom, Vec<CustomRoomSlot>), 
     typ: String,
     conn: &diesel::PgConnection,
-    data: &T) -> AppResult<CustomRoomDto> {
+    data: &T
+) -> AppResult<CustomRoomDto> {
     match CustomRoomDto::new(tuple, conn) {
         Ok(dto) => {
             let user_ids = dto.get_all_user_ids_except(&user_id);
