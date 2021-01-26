@@ -84,7 +84,7 @@ async fn handle_sns_notification(
             FlexMatchEvents::MatchmakingSucceeded => {
                 #[derive(Deserialize)]
                 struct SnsData {
-                    #[serde(rename = "Message")]
+                    #[serde(rename = "Message", with = "as_json_string")]
                     pub message: FlexMatchData<FlexMatchSucceededDetail>,
                 }
 
