@@ -81,7 +81,7 @@ pub struct FlexMatchSucceededDetail {
     pub e_type: FlexMatchEvents,
     #[serde(rename = "matchId")]
     pub match_id: String,
-    #[serde(rename = "gameSessionInfo", with = "as_json_string")]
+    #[serde(rename = "gameSessionInfo")]
     pub game_session_info: FlexMatchGameSession
 }
 
