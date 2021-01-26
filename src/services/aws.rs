@@ -4,7 +4,6 @@ use rusoto_core::request::HttpClient;
 use rusoto_core::region::Region;
 use serde::Deserialize;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use crate::services::{as_json_string};
 
 pub async fn get_gamelift_client() -> GameLiftClient {
     let cred = EnvironmentProvider::default();
