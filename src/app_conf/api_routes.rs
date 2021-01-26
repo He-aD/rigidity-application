@@ -7,6 +7,9 @@ pub fn get_all() -> Scope {
             web::resource("/logout")
                 .route(web::post().to(auth::logout)))
         .service(
+            web::resource("/refresh-cookie")
+                .route(web::get().to(auth::refresh_cookie)))
+        .service(
             web::resource("/matchmaking/custom-room")
                 .route(web::get().to(custom_room::get_all))
                 .route(web::post().to(custom_room::create))

@@ -200,3 +200,12 @@ fn t_reset_password(
 
     Ok(())
 }
+
+pub async fn refresh_cookie(
+    id: Identity,
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    id.forget();
+    id.remember(user_id);
+    Ok(HttpResponse::Ok().finish())
+}
