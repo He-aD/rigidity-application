@@ -151,7 +151,7 @@ pub fn delete(
                 ws, 
                 &user_id, 
                 tuple, 
-                String::from("Delete"), 
+                String::from("delete"), 
                 conn, 
                 &Empty{}) {
                     return Err(AppError::BadRequest(err.to_string()));
