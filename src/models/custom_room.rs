@@ -1,4 +1,4 @@
-use crate::{schema::{custom_room_slots, custom_rooms}};
+use crate::{schema::{custom_room_slots, custom_rooms, users}};
 use crate::diesel::prelude::*;
 use diesel::{PgConnection};
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use std::cmp::Eq;
 use crate::handlers::custom_room::{CreateData};
 use diesel::result::Error;
 use form::{CustomRoomForm, CustomRoomSlotForm};
+use super::user::User;
 use uuid::Uuid;
 use rusoto_gamelift::{Player, StartMatchmakingInput, AttributeValue};
 
@@ -36,18 +37,20 @@ impl CustomRoom {
         *team < self.nb_teams && *team_position < self.max_player_per_team
     }
 
-    pub fn get_start_matchmaking_input(&self, slots: &Vec<CustomRoomSlot>, ticket_id: &Uuid) -> StartMatchmakingInput {
+    pub fn get_start_matchmaking_input(&self, tuples: &Vec<(CustomRoomSlot, User)>, ticket_id: &Uuid) -> StartMatchmakingInput {
         let mut players = Vec::new();
 
-        for slot in slots {
-            let attributes = slot.get_gamelift_attributes();
+        for (slot, user) in tuples {
+            if user.id == slot.user_id {
+                let attributes = slot.get_gamelift_attributes(&user.nickname);
 
-            players.push(Player {
-                latency_in_ms: None,
-                player_attributes: Some(attributes),
-                player_id: Some(slot.user_id.to_string()),
-                team: Some(slot.team.to_string()),
-            });
+                players.push(Player {
+                    latency_in_ms: None,
+                    player_attributes: Some(attributes),
+                    player_id: Some(slot.user_id.to_string()),
+                    team: Some(slot.team.to_string()),
+                });
+            }
         }
 
         StartMatchmakingInput {
@@ -59,7 +62,7 @@ impl CustomRoom {
 }
 
 #[derive(Insertable, Identifiable, Serialize, Deserialize, Queryable, Associations, PartialEq)]
-#[belongs_to(CustomRoom)]
+#[belongs_to(CustomRoom, User)]
 pub struct CustomRoomSlot {
     pub id: i32,
     pub custom_room_id: i32,
@@ -70,7 +73,7 @@ pub struct CustomRoomSlot {
 }
 
 impl CustomRoomSlot {
-    pub fn get_gamelift_attributes(&self) -> HashMap<String, AttributeValue> {
+    pub fn get_gamelift_attributes(&self, nickname: &str) -> HashMap<String, AttributeValue> {
         let mut attributes = HashMap::new();
         attributes.insert(String::from("team"), AttributeValue { 
             s: None,
@@ -90,6 +93,12 @@ impl CustomRoomSlot {
             sdm: None,
             sl: None
         });
+        attributes.insert(String::from("nickname"), AttributeValue { 
+            s: Some(nickname.to_owned()),
+            n: None,
+            sdm: None,
+            sl: None
+        });
 
         attributes
     }
@@ -102,6 +111,18 @@ pub fn get(id: &i32, conn: &PgConnection)
         .load::<CustomRoomSlot>(conn)?;
     
     Ok((custom_room, slots))
+}
+
+pub fn get_with_users(id: &i32, conn: &PgConnection)
+-> ORMResult<(CustomRoom, Vec<(CustomRoomSlot, User)>)> {
+    use crate::schema::custom_room_slots::dsl::{custom_room_id as s_custom_room_id};
+
+    let custom_room = get_without_associations(id, conn)?;
+    let join = custom_room_slots::table.inner_join(users::table);
+    let tuples = join.filter(s_custom_room_id.eq(id))
+        .load::<(CustomRoomSlot, User)>(conn)?;
+
+    Ok((custom_room, tuples))
 }
 
 pub fn get_without_associations(id: &i32, conn: &PgConnection)

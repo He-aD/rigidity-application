@@ -294,14 +294,15 @@ pub async fn start_matchmaking(
     gamelift: &GameLiftClient,
     conn: &PgConnection
 ) -> AppResult<()> {
-    match custom_room::get(&custom_room_id, conn) {
-        Ok(tuple) => {
-            if tuple.0.user_id != user_id {
+    match custom_room::get_with_users(&custom_room_id, conn) {
+        Ok((custom_room, tuples)) => {
+            if custom_room.user_id != user_id {
                 return Err(AppError::BadRequest(String::from("Only the room owner can start matchmaking.")))
             }
 
             let ticket_id = Uuid::new_v4();
-            let start_matchmaking_input = tuple.0.get_start_matchmaking_input(&tuple.1, &ticket_id);
+            let start_matchmaking_input = custom_room.get_start_matchmaking_input(&tuples, &ticket_id);
+            println!("{:?}", start_matchmaking_input);
             match gamelift.start_matchmaking(start_matchmaking_input).await {
                 Ok(result) => {
                     if let Some(_matchmaking_ticket) = result.matchmaking_ticket {                                               
@@ -315,10 +316,14 @@ pub async fn start_matchmaking(
                         #[derive(Serialize)]
                         struct Empty{};
                         let data = &Empty{};
+                        let mut slots = Vec::new();
+                        for (slot, _user) in tuples {
+                            slots.push(slot);
+                        }
                         if let Err(err) = send_multi_forward_message(
                             ws, 
                             &user_id, 
-                            tuple, 
+                            (custom_room, slots), 
                             String::from("start-matchmaking"), 
                             conn, 
                             data) {
