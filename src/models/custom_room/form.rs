@@ -65,15 +65,15 @@ impl<'a> CustomRoomSlotForm<'a> {
         if slots.len() < custom_room.get_capacity() {
             let mut empty_slots = HashMap::new();
         
-            for i in 0..(custom_room.nb_teams - 1) {
+            for i in 0..custom_room.nb_teams {
                 let mut hash = HashMap::new();
-                for j in 0..(custom_room.max_player_per_team - 1) {
+                for j in 0..custom_room.max_player_per_team {
                     hash.insert(j, j);
                 }
 
                 empty_slots.insert(i, hash);
             }
-
+            
             // remove all taken slots from empty_slots
             for slot in slots {
                 match empty_slots.get_mut(&slot.team) {
