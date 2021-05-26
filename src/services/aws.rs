@@ -30,7 +30,9 @@ impl Display for FlexMatchEvents {
 }
 
 pub enum GameLiftConfiguration {
-    CustomGame
+    CustomGame, 
+    Deathmatch,
+    KingOfTheHill,
 }
 
 #[derive(Deserialize, Debug)]
@@ -49,6 +51,12 @@ impl<T> FlexMatchData<T> {
         match split[1] {
             "CustomGame" => {
                 Ok(GameLiftConfiguration::CustomGame)
+            },
+            "Deathmatch" => {
+                Ok(GameLiftConfiguration::Deathmatch)
+            },
+            "KingOfTheHill" => {
+                Ok(GameLiftConfiguration::KingOfTheHill)
             },
             _ => {
                 Err(String::from("Unknown gamelift configuration."))

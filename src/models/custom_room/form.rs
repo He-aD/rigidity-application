@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use crate::{schema::{custom_room_slots, custom_rooms}};
 use crate::enums::{Archetypes, GameModes, Maps};
-use crate::handlers::custom_room::{CreateData, SwitchSlotData};
+use crate::handlers::custom_room::{CustomRoomData, SwitchSlotData};
 use crate::errors::{AppError, AppResult};
 use crate::models::custom_room::{get_without_associations, get_slot_by_position, CustomRoom, CustomRoomSlot};
 use diesel::{PgConnection};
 
-#[derive(Insertable)]
+#[derive(Insertable, AsChangeset)]
 #[table_name = "custom_rooms"]
 pub struct CustomRoomForm<'a> {
     label: &'a str,
@@ -18,7 +18,7 @@ pub struct CustomRoomForm<'a> {
 }
 
 impl<'a> CustomRoomForm<'a> {
-    pub fn new_from_createdata(create_data: &'a CreateData, user_id: &'a i32) -> Self {
+    pub fn new_from_data(create_data: &'a CustomRoomData, user_id: &'a i32) -> Self {
         CustomRoomForm {
             label: &create_data.label,
             user_id: user_id,

@@ -5,7 +5,7 @@ use crate::services::websocket::{ServerMessage, BroadcastExceptMessage, Websocke
 use crate::models::custom_room::form::{CustomRoomSlotForm};
 use serde::{Serialize};
 use crate::handlers::custom_room::dtos::CustomRoomDto;
-use crate::handlers::custom_room::{CreateData, SwitchSlotData};
+use crate::handlers::custom_room::{CustomRoomData, SwitchSlotData};
 use crate::errors::{AppResult, AppError};
 use crate::enums::Archetypes;
 use diesel::{PgConnection};
@@ -34,7 +34,7 @@ pub fn get_all(
 }
 
 pub fn create(    
-    create_data: CreateData,
+    create_data: CustomRoomData,
     user_id: i32,
     ws: Addr<WebsocketLobby>,
     conn: &PgConnection
@@ -108,6 +108,31 @@ pub fn join(
     }
 }
 
+pub fn update(
+    update_data: CustomRoomData,
+    user_id: i32,
+    ws: Addr<WebsocketLobby>,
+    conn: &PgConnection
+) -> AppResult<CustomRoomDto> {
+    let mut tuple = match custom_room::get_by_user_id(&user_id, conn) {
+        Ok(tuple) => tuple,
+        Err(err) => return Err(AppError::BadRequest(err.to_string()))
+    };
+
+    tuple = match custom_room::update(&user_id, &tuple.0.id, &update_data, conn) {
+        Ok(tuple) => tuple,
+        Err(err) => return Err(AppError::BadRequest(err.to_string()))
+    };
+
+    send_multi_forward_message(
+        ws, 
+        &user_id, 
+        tuple, 
+        String::from("update"), 
+        conn, 
+        &update_data)
+}
+
 pub fn quit(
     custom_room_id: i32, 
     user_id: i32, 
@@ -146,7 +171,7 @@ pub fn delete(
                 return Err(AppError::BadRequest(err.to_string()));
             } 
             #[derive(Serialize)]
-            struct Empty{};
+            struct Empty{}
             if let Err(err) = send_multi_forward_message(
                 ws, 
                 &user_id, 
@@ -254,7 +279,7 @@ pub fn kick(
             #[derive(Serialize)]
             struct WsData {
                 pub user_id: i32,
-            };
+            }
             let data = WsData{user_id: user_id_to_kick};
             match CustomRoomDto::new(tuple, conn) {
                 Ok(dto) => {
@@ -314,7 +339,7 @@ pub async fn start_matchmaking(
                         }
     
                         #[derive(Serialize)]
-                        struct Empty{};
+                        struct Empty{}
                         let data = &Empty{};
                         let mut slots = Vec::new();
                         for (slot, _user) in tuples {
@@ -371,7 +396,7 @@ pub async fn stop_matchmaking(
                         return Err(AppError::InternalServerError(err.to_string()));
                     }
                     #[derive(Serialize)]
-                    struct Empty{};
+                    struct Empty{}
                     let data = &Empty{};
                     if let Err(err) = send_multi_forward_message(
                         ws, 

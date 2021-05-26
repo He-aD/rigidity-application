@@ -89,18 +89,14 @@ async fn handle_sns_notification(
                 }
 
                 match obj.message.get_configuration() {
-                    Ok(conf) => {
-                        match conf {
-                            GameLiftConfiguration::CustomGame => {
-                                let data = from_slice::<SnsData>(&body).unwrap();
-                                if let Err(err) = custom_room::matchmaking_succeeded(
-                                    data.message,
-                                    ws.get_ref().to_owned(),
-                                    &pool.get().unwrap()
-                                ) {
-                                    return Err(err)
-                                }
-                            }
+                    Ok(_conf) => {
+                        let data = from_slice::<SnsData>(&body).unwrap();
+                        if let Err(err) = custom_room::matchmaking_succeeded(
+                            data.message,
+                            ws.get_ref().to_owned(),
+                            &pool.get().unwrap()
+                        ) {
+                            return Err(err)
                         }
                     },
                     Err(err) => return Err(AppError::BadRequest(err))

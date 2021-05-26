@@ -13,6 +13,7 @@ pub fn get_all() -> Scope {
             web::resource("/matchmaking/custom-room")
                 .route(web::get().to(custom_room::get_all))
                 .route(web::post().to(custom_room::create))
+                .route(web::put().to(custom_room::update))
                 .route(web::delete().to(custom_room::delete)))
         .service(
             web::resource("/matchmaking/custom-room/{id}/join")

@@ -26,6 +26,14 @@ impl Display for Archetypes {
 pub enum GameModes {
     #[db_rename = "deathmatch"]
     Deathmatch,
+    #[db_rename = "king_of_the_hill"]
+    KingOfTheHill
+}
+
+impl Display for GameModes {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Eq, Hash, Deserialize, PartialEq, Serialize, Debug, DbEnum)]

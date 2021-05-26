@@ -6,7 +6,7 @@ use crate::enums::{Archetypes, GameModes, Maps};
 use crate::models::ORMResult;
 use std::{collections::HashMap};
 use std::cmp::Eq;
-use crate::handlers::custom_room::{CreateData};
+use crate::handlers::custom_room::{CustomRoomData};
 use diesel::result::Error;
 use form::{CustomRoomForm, CustomRoomSlotForm};
 use super::user::User;
@@ -54,7 +54,7 @@ impl CustomRoom {
         }
 
         StartMatchmakingInput {
-            configuration_name: String::from("CustomGame"),
+            configuration_name: self.current_game_mode.to_string(),
             players: players,
             ticket_id: Some(ticket_id.to_string()),
         }
@@ -230,7 +230,7 @@ pub fn delete(
 
 pub fn create(
     user_id: &i32, 
-    data: CreateData,
+    data: CustomRoomData,
     conn: &PgConnection
 ) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
     use crate::schema::custom_rooms::dsl::{id, custom_rooms};
@@ -238,7 +238,7 @@ pub fn create(
 
     conn.transaction::<(CustomRoom, Vec<CustomRoomSlot>), Error, _>(move || {
         diesel::insert_into(custom_rooms)
-            .values(CustomRoomForm::new_from_createdata(
+            .values(CustomRoomForm::new_from_data(
                 &data, 
                 user_id))
             .execute(conn)?;
@@ -256,6 +256,23 @@ pub fn create(
 
         get(&custom_room_id, conn)       
     })
+}
+
+pub fn update(
+    user_id: &i32,
+    custom_room_id: &i32, 
+    data: &CustomRoomData,
+    conn: &PgConnection
+) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
+    use crate::schema::custom_rooms::dsl::{id, custom_rooms};
+
+    diesel::update(custom_rooms.filter(id.eq(custom_room_id)))
+        .set(CustomRoomForm::new_from_data(
+            data, 
+            user_id))
+        .execute(conn)?;
+
+    get(&custom_room_id, conn)
 }
 
 pub fn update_ticket(

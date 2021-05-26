@@ -1,7 +1,7 @@
 use crate::{enums::Archetypes, errors::{AppResult, AppError}};
 use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
 use crate::enums::{Maps, GameModes};
-use serde::{Deserialize};
+use serde::{Serialize, Deserialize};
 use crate::Pool;
 use actix_identity::Identity;
 use crate::services::{custom_room as service, websocket::WebsocketLobby};
@@ -25,8 +25,8 @@ pub async fn get_all(
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CreateData {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CustomRoomData {
     pub label: String,
     pub nb_teams: i32,
     pub max_players_per_team: i32,
@@ -35,7 +35,7 @@ pub struct CreateData {
 }
 
 pub async fn create(
-    create_data: web::Json<CreateData>,
+    create_data: web::Json<CustomRoomData>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
@@ -44,6 +44,29 @@ pub async fn create(
     match web::block(move || 
         service::create(
             create_data.into_inner(),
+            user_id.parse::<i32>().unwrap(),
+            ws.get_ref().to_owned(),
+            &pool.get().unwrap())).await {
+        Ok(custom_room) => {
+            Ok(HttpResponse::Ok().json(custom_room))
+        }
+        Err(err) => match err {
+            BlockingError::Error(service_error) => Err(service_error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }
+}
+
+pub async fn update(
+    update_data: web::Json<CustomRoomData>,
+    id: Identity,
+    ws: web::Data<Addr<WebsocketLobby>>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let user_id = id.identity().unwrap();
+    match web::block(move || 
+        service::update(
+            update_data.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
             &pool.get().unwrap())).await {

@@ -89,7 +89,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
             }
             Ok(ws::Message::Nop) => (),
             Ok(Text(_)) => (), //do nothing
-            Err(e) => panic!(e),
+            Err(e) => std::panic::panic_any(e),
         }
     }
 }
