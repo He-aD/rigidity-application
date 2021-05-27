@@ -266,11 +266,11 @@ pub fn update(
 ) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
     use crate::schema::custom_rooms::dsl::{id, custom_rooms};
 
-    diesel::update(custom_rooms.filter(id.eq(custom_room_id)))
+    diesel::update(custom_rooms)
+        .filter(id.eq(custom_room_id))
         .set(CustomRoomForm::new_from_data(
             data, 
-            user_id))
-        .execute(conn)?;
+            user_id)).execute(conn)?;
 
     get(&custom_room_id, conn)
 }
