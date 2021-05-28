@@ -26,3 +26,4 @@ local_start: ## Start everything for local dev
 
 prod_deploy: ## Run migrations for prod env
 	cargo install diesel_cli --no-default-features --features postgres && diesel setup --database-url=${POSTGRESQL_ADDON_URI} && diesel migration run --database-url=${POSTGRESQL_ADDON_URI}
+	
