@@ -13,8 +13,8 @@ pub struct CustomRoomForm<'a> {
     user_id: &'a i32,
     nb_teams: &'a i32,
     max_player_per_team: &'a i32,
-    current_game_mode: &'a GameModes,
-    current_map: &'a Maps,
+    current_game_mode: Option<&'a GameModes>,
+    current_map: Option<&'a Maps>,
 }
 
 impl<'a> CustomRoomForm<'a> {
@@ -24,8 +24,8 @@ impl<'a> CustomRoomForm<'a> {
             user_id: user_id,
             nb_teams: &create_data.nb_teams,
             max_player_per_team: &create_data.max_players_per_team,
-            current_game_mode: &create_data.game_mode,
-            current_map: &create_data.map,
+            current_game_mode: create_data.game_mode.as_ref(),
+            current_map: create_data.map.as_ref(),
         }
     }
 }

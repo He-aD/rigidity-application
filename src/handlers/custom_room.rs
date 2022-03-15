@@ -30,8 +30,8 @@ pub struct CustomRoomData {
     pub label: String,
     pub nb_teams: i32,
     pub max_players_per_team: i32,
-    pub game_mode: GameModes,
-    pub map: Maps
+    pub game_mode: Option<GameModes>,
+    pub map: Option<Maps>
 }
 
 pub async fn create(
