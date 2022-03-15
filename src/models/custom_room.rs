@@ -54,7 +54,7 @@ impl CustomRoom {
         }
 
         StartMatchmakingInput {
-            configuration_name: self.current_game_mode.to_string(),
+            configuration_name: self.current_map.to_string(),
             players: players,
             ticket_id: Some(ticket_id.to_string()),
         }

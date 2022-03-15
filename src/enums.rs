@@ -42,4 +42,16 @@ impl Display for GameModes {
 pub enum Maps {
     #[db_rename = "heaven"]
     Heaven,
+    #[db_rename = "ascent"]
+    Ascent, 
+    #[db_rename = "inferno"]
+    Inferno,
+    #[db_rename = "colosseum"]
+    Colosseum
+}
+
+impl Display for Maps {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{:?}", self)
+    }
 }
