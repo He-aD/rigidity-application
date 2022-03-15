@@ -1,4 +1,5 @@
 -- Your SQL goes here
-ALTER TYPE enum_maps ADD VALUE 'ascent';
-ALTER TYPE enum_maps ADD VALUE 'inferno';
-ALTER TYPE enum_maps ADD VALUE 'colosseum';
+ALTER TABLE custom_rooms ALTER current_map TYPE TEXT;
+DROP TYPE enum_maps;
+CREATE TYPE enum_maps AS ENUM ('ascent', 'inferno', 'colosseum', 'heaven');
+ALTER TABLE custom_rooms ALTER current_map TYPE enum_maps USING current_map::enum_maps;
