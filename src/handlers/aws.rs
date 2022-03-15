@@ -83,23 +83,17 @@ async fn handle_sns_notification(
         match obj.message.detail.e_type {
             FlexMatchEvents::MatchmakingSucceeded => {
                 #[derive(Deserialize)]
-                struct SnsData {
+                struct SnsDataSucceeded {
                     #[serde(rename = "Message", with = "as_json_string")]
                     pub message: FlexMatchData<FlexMatchSucceededDetail>,
                 }
-
-                match obj.message.get_configuration() {
-                    Ok(_conf) => {
-                        let data = from_slice::<SnsData>(&body).unwrap();
-                        if let Err(err) = custom_room::matchmaking_succeeded(
-                            data.message,
-                            ws.get_ref().to_owned(),
-                            &pool.get().unwrap()
-                        ) {
-                            return Err(err)
-                        }
-                    },
-                    Err(err) => return Err(AppError::BadRequest(err))
+                let data = from_slice::<SnsDataSucceeded>(&body).unwrap();
+                if let Err(err) = custom_room::matchmaking_succeeded(
+                    data.message,
+                    ws.get_ref().to_owned(),
+                    &pool.get().unwrap()
+                ) {
+                    return Err(err)
                 }
             },
             FlexMatchEvents::MatchmakingTimedOut |

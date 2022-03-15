@@ -29,12 +29,6 @@ impl Display for FlexMatchEvents {
     }
 }
 
-pub enum GameLiftConfiguration {
-    CustomGame, 
-    Deathmatch,
-    KingOfTheHill,
-}
-
 #[derive(Deserialize, Debug)]
 pub struct FlexMatchData<T> 
 {
@@ -43,26 +37,6 @@ pub struct FlexMatchData<T>
     pub region: String,
     pub resources: Vec<String>,
     pub detail: T
-}
-
-impl<T> FlexMatchData<T> {
-    pub fn get_configuration(&self) -> Result<GameLiftConfiguration, String> {
-        let split: Vec<&str> = self.resources[0].split("/").collect();
-        match split[1] {
-            "CustomGame" => {
-                Ok(GameLiftConfiguration::CustomGame)
-            },
-            "Deathmatch" => {
-                Ok(GameLiftConfiguration::Deathmatch)
-            },
-            "KingOfTheHill" => {
-                Ok(GameLiftConfiguration::KingOfTheHill)
-            },
-            _ => {
-                Err(String::from("Unknown gamelift configuration."))
-            }
-        }
-    }
 }
 
 #[derive(Deserialize, Debug)]
