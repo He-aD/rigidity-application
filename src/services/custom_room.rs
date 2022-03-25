@@ -241,7 +241,7 @@ pub fn switch_archetype(
     #[derive(Serialize)]
     struct WsData<'a> {
         pub user_id: &'a i32,
-        pub archetype: &'a Archetypes,
+        pub archetype: u32,
     }
 
     match custom_room::update_slot_archetype(
@@ -252,7 +252,7 @@ pub fn switch_archetype(
         Ok(tuple) => {
             let ws_data = WsData {
                 user_id: &user_id,
-                archetype: &archetype,
+                archetype: archetype.to_u32(),
             };
             send_multi_forward_message(
                 ws,

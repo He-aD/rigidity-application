@@ -1,6 +1,6 @@
 use serde::{Serialize};
 use crate::models::custom_room::{CustomRoomSlot, CustomRoom};
-use crate::enums::{GameModes, Maps, Archetypes};
+use crate::enums::{GameModes, Maps};
 use crate::models::user;
 use diesel::{PgConnection};
 use crate::models::ORMResult;
@@ -84,7 +84,7 @@ pub struct CustomRoomSlotDto {
     pub team_position: i32,
     pub user_id: i32,
     pub nickname: String,
-    pub archetype: Archetypes,
+    pub archetype: u32,
 }
 
 impl CustomRoomSlotDto {
@@ -98,7 +98,7 @@ impl CustomRoomSlotDto {
             team_position: slot.team_position,
             user_id: slot.user_id,
             nickname: user.nickname,
-            archetype: slot.current_archetype,
+            archetype: slot.current_archetype.to_u32(),
         })
     }
 }

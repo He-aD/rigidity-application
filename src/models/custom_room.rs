@@ -88,8 +88,8 @@ impl CustomRoomSlot {
             sl: None
         });
         attributes.insert(String::from("archetype"), AttributeValue { 
-            s: Some(self.current_archetype.to_string()),
-            n: None,
+            s: None,
+            n: Some(self.current_archetype.to_u32() as f64),
             sdm: None,
             sl: None
         });

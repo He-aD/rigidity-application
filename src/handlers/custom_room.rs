@@ -179,27 +179,31 @@ pub async fn switch_slot(
 }
 
 pub async fn switch_archetype(
-    param: Path<(i32, Archetypes)>,
+    param: Path<(i32, u32)>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     let user_id = id.identity().unwrap();
-    let (custom_room_id, archetype) = param.into_inner();
-    match web::block(move || 
-        service::switch_archetype(
-            custom_room_id,
-            archetype,
-            user_id.parse::<i32>().unwrap(),
-            ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
+    let (custom_room_id, archetype_id) = param.into_inner();
+
+    match Archetypes::from_u32(archetype_id) {
+        Some(archetype) => match web::block(move || 
+            service::switch_archetype(
+                custom_room_id,
+                archetype,
+                user_id.parse::<i32>().unwrap(),
+                ws.get_ref().to_owned(),
+                &pool.get().unwrap())).await {
+            Ok(custom_room) => {
+                Ok(HttpResponse::Ok().json(custom_room))
+            }
+            Err(err) => match err {
+                BlockingError::Error(service_error) => Err(service_error),
+                BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+            }
+        },
+        None => Err(AppError::BadRequest(format!("Unknown archetype id: {}", archetype_id)))
     }
 }
 
