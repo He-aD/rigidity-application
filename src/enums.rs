@@ -12,6 +12,8 @@ pub enum Archetypes {
     Spiker,
     #[db_rename = "healer"]
     Healer,
+    #[db_rename = "assassin"]
+    Assassin,
 }
 
 impl Archetypes {
@@ -20,6 +22,7 @@ impl Archetypes {
             0 => Some(Archetypes::Leader),
             1 => Some(Archetypes::Spiker),
             2 => Some(Archetypes::Healer),
+            3 => Some(Archetypes::Assassin),
             _ => None,
         }
     }
@@ -29,6 +32,7 @@ impl Archetypes {
             Archetypes::Leader => 0,
             Archetypes::Spiker => 1,
             Archetypes::Healer => 2,
+            Archetypes::Assassin => 3,
         }
     }
 }
