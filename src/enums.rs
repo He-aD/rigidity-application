@@ -70,7 +70,9 @@ pub enum Maps {
     #[db_rename = "inferno"]
     Inferno,
     #[db_rename = "colosseum"]
-    Colosseum
+    Colosseum,
+    #[db_rename = "play_ground"]
+    PlayGround,
 }
 
 impl Display for Maps {
