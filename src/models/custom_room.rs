@@ -307,13 +307,20 @@ pub fn update_slot(
     custom_room_slot_form: &CustomRoomSlotForm,
     conn: &PgConnection
 ) -> ORMResult<(CustomRoom, Vec<CustomRoomSlot>)> {
-    use crate::schema::custom_room_slots::dsl::{user_id as s_user_id, custom_room_slots};
+    use crate::schema::custom_room_slots::dsl::{custom_room_id as s_custom_room_id, user_id as s_user_id, custom_room_slots}; 
     
-    diesel::update(custom_room_slots.filter(s_user_id.eq(user_id)))
-        .set(custom_room_slot_form)
-        .execute(conn)?;
+    conn.transaction::<(CustomRoom, Vec<CustomRoomSlot>), Error, _>(move || {
+        custom_room_slots
+            .for_update()
+            .filter(s_custom_room_id.eq(custom_room_slot_form.get_custom_room_id()))
+            .load::<CustomRoomSlot>(conn)?;
+        
+        diesel::update(custom_room_slots.filter(s_user_id.eq(user_id)))
+            .set(custom_room_slot_form)
+            .execute(conn)?;
 
-    get(&custom_room_slot_form.get_custom_room_id(), conn)  
+        get(&custom_room_slot_form.get_custom_room_id(), conn)  
+    })
 } 
 
 pub fn update_slot_archetype(
