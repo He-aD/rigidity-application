@@ -3,17 +3,14 @@ use crate::diesel::prelude::*;
 use diesel::{PgConnection};
 use serde::{Deserialize, Serialize};
 use crate::enums::{Archetypes, GameModes, Maps};
-use crate::models::ORMResult;
+use crate::models::{forms::custom_room::{CustomRoomForm, CustomRoomSlotForm}, ORMResult};
 use std::{collections::HashMap};
 use std::cmp::Eq;
 use crate::handlers::custom_room::{CustomRoomData};
 use diesel::result::Error;
-use form::{CustomRoomForm, CustomRoomSlotForm};
 use super::user::User;
 use uuid::Uuid;
 use rusoto_gamelift::{Player, StartMatchmakingInput, AttributeValue};
-
-pub mod form;
 
 #[derive(Eq, Hash, Insertable, Identifiable, Serialize, Deserialize, Queryable, PartialEq)]
 pub struct CustomRoom {

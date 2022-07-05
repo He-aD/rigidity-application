@@ -2,7 +2,7 @@ use crate::models::{user, custom_room, custom_room::{CustomRoom, CustomRoomSlot}
 use actix::{Addr};
 use rusoto_gamelift::*;
 use crate::services::websocket::{ServerMessage, BroadcastExceptMessage, WebsocketLobby, MultiForwardMessage, ForwardMessage};
-use crate::models::custom_room::form::{CustomRoomSlotForm};
+use crate::models::forms::custom_room::{CustomRoomSlotForm};
 use serde::{Serialize};
 use crate::handlers::custom_room::dtos::CustomRoomDto;
 use crate::handlers::custom_room::{CustomRoomData, SwitchSlotData};

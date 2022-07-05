@@ -1,5 +1,5 @@
 use actix_web::{web, Scope};
-use crate::handlers::auth;
+use crate::handlers::{auth, user};
 
 pub fn get_all() -> Scope {
     web::scope("/api-open")
@@ -10,4 +10,7 @@ pub fn get_all() -> Scope {
         .service(
             web::resource("/login")
                 .route(web::post().to(auth::login)))
+        .service(
+            web::resource("/user/create")
+                .route(web::post().to(user::create)))
 }

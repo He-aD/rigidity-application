@@ -39,6 +39,10 @@ table! {
         reset_password_hash -> Nullable<Varchar>,
         password_hash_expire_at -> Nullable<Timestamp>,
         created_at -> Timestamp,
+        steam_id -> Text,
+        first_name -> Varchar,
+        last_name -> Varchar,
+        birth_date -> Timestamp,
     }
 }
 

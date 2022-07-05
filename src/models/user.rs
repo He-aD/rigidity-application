@@ -6,7 +6,8 @@ use diesel::{PgConnection};
 use serde::{Deserialize, Serialize};
 use crate::errors::*;
 use crate::app_conf::SECRET_KEY;
-use crate::models::ORMResult;
+use crate::models::{forms::user::UserForm, ORMResult};
+use diesel::result::Error;
 
 #[derive(Serialize, Deserialize, Queryable, AsChangeset)]
 #[changeset_options(treat_none_as_null="true")]
@@ -22,6 +23,10 @@ pub struct User {
     pub password_hash_expire_at: Option<NaiveDateTime>,
     #[serde(skip_serializing)]
     pub created_at: NaiveDateTime,
+    pub steam_id: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub birth_date: NaiveDateTime,
 }
 
 impl User {
@@ -60,6 +65,26 @@ pub fn get_by_reset_password_hash(
 ) -> ORMResult<User> {
     users.filter(reset_password_hash.eq(h))
         .get_result::<User>(conn) 
+}
+
+pub fn create(
+    data: UserForm,
+    conn: &PgConnection
+) -> ORMResult<User> {
+    use crate::schema::users::dsl::users;
+
+    conn.transaction::<User, Error, _>(move || {
+        diesel::insert_into(users)
+            .values(data)
+            .execute(conn)?;
+
+        let user_id = users
+            .select(id)
+            .order(id.desc())
+            .first(conn)?;
+
+        get(&user_id, conn)       
+    })
 }
 
 pub fn update_reset_password_hash(
