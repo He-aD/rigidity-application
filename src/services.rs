@@ -1,7 +1,29 @@
+use std::collections::HashMap;
+
+fn make_path_and_query(path: &str, params: &HashMap<&str, String>) -> String {
+    let mut result = path.to_string();
+    
+    if !params.is_empty() {
+        result.push_str("?");
+    }
+
+    for (key, value) in params {
+        result.push_str(key);
+        result.push_str("=");
+        result.push_str(value.as_str());
+        result.push_str("&");
+    }
+
+    result.pop();
+
+    result
+}
+
 pub mod email;
 pub mod websocket;
 pub mod custom_room;
 pub mod aws;
+pub mod steam;
 
 // Serialize and deserialize logic for dealing with nested values reprsented as
 // JSON strings.

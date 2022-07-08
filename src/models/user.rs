@@ -59,6 +59,14 @@ pub fn get_by_email(
         .get_result::<User>(conn)
 }
 
+pub fn get_by_steam_id(
+    i_d: &str, 
+    conn: &PgConnection
+) -> ORMResult<User> {
+    users.filter(steam_id.eq(i_d))
+        .get_result::<User>(conn)
+}
+
 pub fn get_by_reset_password_hash(
     h: &str, 
     conn: &PgConnection

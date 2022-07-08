@@ -11,6 +11,9 @@ pub fn get_all() -> Scope {
             web::resource("/login")
                 .route(web::post().to(auth::login)))
         .service(
+            web::resource("/login-steam")
+                .route(web::post().to(auth::login_steam)))
+        .service(
             web::resource("/user/create")
                 .route(web::post().to(user::create)))
 }

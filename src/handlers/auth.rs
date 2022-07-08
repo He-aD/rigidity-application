@@ -3,13 +3,14 @@ use actix_web::{web, error::BlockingError, HttpResponse};
 use actix_web::http::StatusCode;
 use serde::Deserialize;
 use crate::errors::{AppResult, AppError};
-use crate::models::user;
+use crate::models::user::{self};
 use crate::Pool;
-use crate::services::email::EmailService;
+use crate::services::{email::EmailService, steam::SteamAuthData};
 use argon2::Config;
 use rand::Rng;
 use chrono::{Utc, NaiveDateTime};
 use crate::app_conf::{get_base_url, SECRET_KEY};
+use crate::services::steam;
 
 #[derive(Debug, Deserialize)]
 pub struct AuthData {
@@ -53,6 +54,23 @@ fn t_login(
     }
 
     Err(AppError::BadRequest(String::from("Incorrect password.")))
+}
+
+pub async fn login_steam(
+    auth_data: web::Json<SteamAuthData>,
+    id: Identity,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let steam_id = steam::authenticate_user_ticket(&auth_data).await?;
+    match user::get_by_steam_id(&steam_id, &pool.get().unwrap()) {
+        Ok(user) => {
+            id.remember(user.id.to_string());
+            Ok(HttpResponse::Ok().json(user))
+        }
+        Err(_err) => {
+            Ok(HttpResponse::Ok().status(StatusCode::SEE_OTHER).finish())
+        }
+    }
 }
 
 pub async fn logout(

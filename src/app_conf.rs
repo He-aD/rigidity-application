@@ -111,6 +111,7 @@ pub fn set_env() {
     std::env::var("AWS_ACCESS_KEY_ID").expect("Missing AWS_ACCESS_KEY_ID env variable.");
     std::env::var("AWS_SECRET_ACCESS_KEY").expect("Missing AWS_SECRET_ACCESS_KEY env variable.");
     std::env::var("SECRET_KEY").expect("Missing SECRET_KEY env variable.");
+    std::env::var("STEAM_SECRET_ACCESS_KEY").expect("Missing STEAM_SECRET_ACCESS_KEY env variable");
 
     env_logger::init();
 }

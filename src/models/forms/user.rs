@@ -1,6 +1,6 @@
 use crate::chrono::NaiveDateTime;
 use crate::schema::users;
-use crate::handlers::user::UserData;
+use crate::handlers::user::CreateUserData;
 
 #[derive(Insertable, AsChangeset)]
 #[table_name = "users"]
@@ -15,11 +15,11 @@ pub struct UserForm<'a> {
 }
 
 impl<'a> UserForm<'a> {
-    pub fn new_from_data(create_data: &'a UserData) -> Self {
+    pub fn new_from_data(create_data: &'a CreateUserData, steam_id: &'a str) -> Self {
         UserForm {
             email: &create_data.email,
             nickname: &create_data.nickname,
-            steam_id: &create_data.steam_id,
+            steam_id: steam_id,
             first_name: &create_data.first_name,
             last_name: &create_data.last_name,
             hash: "Waiting for init",

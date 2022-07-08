@@ -1,7 +1,8 @@
-use actix_web::{error::ResponseError, HttpResponse};
+use actix_web::{error::{ResponseError, PayloadError}, HttpResponse, client::SendRequestError};
 use derive_more::Display;
 use diesel::result::{DatabaseErrorKind, Error as DBError};
 use std::convert::From;
+use serde_json;
 
 pub type AppResult<R> = Result<R, AppError>;
 
@@ -43,8 +44,6 @@ impl ResponseError for AppError {
 
 impl From<DBError> for AppError {
     fn from(error: DBError) -> AppError {
-        // Right now we just care about UniqueViolation from diesel
-        // But this would be helpful to easily map errors as our app grows
         match error {
             DBError::DatabaseError(kind, info) => {
                 if let DatabaseErrorKind::UniqueViolation = kind {
@@ -56,5 +55,23 @@ impl From<DBError> for AppError {
             }
             _ => AppError::InternalServerError(String::from("Database error")),
         }
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(error: serde_json::Error) -> AppError {
+        AppError::InternalServerError(format!("Error while parsing json. {}", error.to_string()))
+    }
+}
+
+impl From<PayloadError> for AppError {
+    fn from(error: PayloadError) -> AppError {
+        AppError::InternalServerError(format!("Payload error. {}", error.to_string()))
+    }
+}
+
+impl From<SendRequestError> for AppError {
+    fn from(error: SendRequestError) -> AppError {
+        AppError::BadRequest(format!("A request send by the server has failed. {}", error.to_string()))
     }
 }
