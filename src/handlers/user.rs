@@ -8,7 +8,7 @@ use crate::models::user::{create as create_user};
 use crate::models::forms::user::UserForm;
 use crate::services::steam;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct CreateUserData {
     pub email: String,
     pub nickname: String,
