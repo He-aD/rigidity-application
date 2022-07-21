@@ -24,10 +24,12 @@ pub async fn create(
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {    
     let steam_id = steam::authenticate_user_ticket(&create_data.auth).await?;
+    let data = create_data.into_inner();
+    steam::check_app_ownership(&data.auth.app_id, &steam_id).await?; 
 
     match web::block(move || 
         create_user(
-            UserForm::new_from_data(&create_data.into_inner(), &steam_id), 
+            UserForm::new_from_data(&data, &steam_id.to_string()), 
             &pool.get().unwrap())).await {
         Ok(user) => {
             id.remember(user.id.to_string());
