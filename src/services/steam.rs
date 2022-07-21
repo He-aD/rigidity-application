@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::errors::{AppResult, AppError};
 use serde::Deserialize;
 use serde_json;
-use crate::chrono::{DateTime, Utc};
+// use crate::chrono::{DateTime, Utc};
 
 const STEAM_DOMAIN: &str = "partner.steam-api.com";
 
@@ -29,8 +29,8 @@ struct AuthenticateUserTicketResponse {
     pub result: String,
     #[serde(rename = "steamid")]
     pub steam_id: String,
-    #[serde(rename = "ownersteamid")]
-    pub owner_steam_id: String,
+    // #[serde(rename = "ownersteamid")]
+    // pub owner_steam_id: String,
     #[serde(rename = "vacbanned")]
     pub vac_banned: bool,
     #[serde(rename = "publisherbanned")] 
@@ -39,8 +39,8 @@ struct AuthenticateUserTicketResponse {
 
 #[derive(Deserialize)]
 struct ErrorResponse {
-    #[serde(rename = "errorcode")]
-    error_code: i32,
+    // #[serde(rename = "errorcode")]
+    // error_code: i32,
     #[serde(rename = "errordesc")]
     message: String,
 }
@@ -97,14 +97,14 @@ struct OwnershipBaseResponse<T> {
 struct OwnershipResponse {
     #[serde(rename = "ownsapp")]
     pub owns_app: bool,
-    pub permanent: bool,
-    pub timestamp: DateTime<Utc>,
-    #[serde(rename = "ownersteamid")]
-    pub owner_steam_id: String,
-    #[serde(rename = "sitelicense")] 
-    pub site_license: bool,
-    #[serde(rename = "timedtrial")] 
-    pub timed_trial: bool,
+    // pub permanent: bool,
+    // pub timestamp: DateTime<Utc>,
+    // #[serde(rename = "ownersteamid")]
+    // pub owner_steam_id: String,
+    // #[serde(rename = "sitelicense")] 
+    // pub site_license: bool,
+    // #[serde(rename = "timedtrial")] 
+    // pub timed_trial: bool,
     pub result: String
 }
 
