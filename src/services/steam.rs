@@ -7,6 +7,7 @@ use serde_json;
 // use crate::chrono::{DateTime, Utc};
 
 const STEAM_DOMAIN: &str = "partner.steam-api.com";
+const UNIVERSAL_STEAM_APP_ID: u64 = 480;
 
 #[derive(Deserialize)]
 pub struct SteamAuthData {
@@ -109,35 +110,40 @@ struct OwnershipResponse {
 }
 
 pub async fn check_app_ownership(app_id: &u64, steam_id: &u64) -> AppResult<()> {
-    let mut params = HashMap::new();
-    params.insert("key", std::env::var("STEAM_SECRET_ACCESS_KEY").unwrap_or_default());
-    params.insert("appid", app_id.to_string());
-    params.insert("steamid", steam_id.to_string());
-
-    let uri = Builder::new()
-        .scheme("https")
-        .authority(STEAM_DOMAIN)
-        .path_and_query(make_path_and_query("/ISteamUser/CheckAppOwnership/v2", &params))
-        .build()
-        .unwrap();
+    if app_id == &UNIVERSAL_STEAM_APP_ID {
+        Ok(())
+    } else {
+        let mut params = HashMap::new();
+        params.insert("key", std::env::var("STEAM_SECRET_ACCESS_KEY").unwrap_or_default());
+        params.insert("appid", app_id.to_string());
+        params.insert("steamid", steam_id.to_string());
     
-    let client = Client::default();
-    let mut result = client.get(uri)
-        .header(http::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .send()
-        .await?;
+        let uri = Builder::new()
+            .scheme("https")
+            .authority(STEAM_DOMAIN)
+            .path_and_query(make_path_and_query("/ISteamUser/CheckAppOwnership/v2", &params))
+            .build()
+            .unwrap();
         
-    let body = result.body().await?;
-    match serde_json::from_slice::<OwnershipBaseResponse<OwnershipResponse>>(&body) {
-        Ok(steam_response) => {
-            if steam_response.app_ownership.result == "OK" && steam_response.app_ownership.owns_app {
-                Ok(())
-            } else {
+        let client = Client::default();
+        let mut result = client.get(uri)
+            .header(http::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .send()
+            .await?;
+            
+        let body = result.body().await?;
+        match serde_json::from_slice::<OwnershipBaseResponse<OwnershipResponse>>(&body) {
+            Ok(steam_response) => {
+                if steam_response.app_ownership.result == "OK" && steam_response.app_ownership.owns_app {
+                    Ok(())
+                } else {
+                    Err(AppError::Unauthorized)
+                }
+            },
+            Err(_) => {
                 Err(AppError::Unauthorized)
             }
-        },
-        Err(_) => {
-            Err(AppError::Unauthorized)
         }
     }
+    
 }
