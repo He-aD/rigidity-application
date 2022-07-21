@@ -8,23 +8,23 @@ use crate::chrono::{DateTime, Utc};
 
 const STEAM_DOMAIN: &str = "partner.steam-api.com";
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct SteamAuthData {
     pub app_id: u64,
     pub auth_ticket: String
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct AuthResponseBase<T> {
     pub response: T
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct AuthResponse<T> {
     pub params: T
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct AuthenticateUserTicketResponse {
     pub result: String,
     #[serde(rename = "steamid")]
@@ -37,7 +37,7 @@ struct AuthenticateUserTicketResponse {
     pub publisher_banned: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct ErrorResponse {
     #[serde(rename = "errorcode")]
     error_code: i32,
@@ -45,7 +45,7 @@ struct ErrorResponse {
     message: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct Error {
     error: ErrorResponse
 }
@@ -87,13 +87,13 @@ pub async fn authenticate_user_ticket(data: &SteamAuthData) -> AppResult<u64> {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct OwnershipBaseResponse<T> {
     #[serde(rename = "appownership")]
     pub app_ownership: T
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct OwnershipResponse {
     #[serde(rename = "ownsapp")]
     pub owns_app: bool,
