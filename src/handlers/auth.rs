@@ -62,10 +62,10 @@ pub async fn login_steam(
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     let steam_id = steam::authenticate_user_ticket(&auth_data).await?;
-    steam::check_app_ownership(&auth_data.app_id, &steam_id).await?;
 
     match user::get_by_steam_id(&steam_id.to_string(), &pool.get().unwrap()) {
         Ok(user) => {
+            steam::check_app_ownership(&auth_data.app_id, &steam_id).await?;
             id.remember(user.id.to_string());
             Ok(HttpResponse::Ok().json(user))
         }
