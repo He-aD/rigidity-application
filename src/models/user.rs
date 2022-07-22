@@ -27,10 +27,12 @@ pub struct User {
     pub first_name: String,
     pub last_name: String,
     pub birth_date: NaiveDateTime,
+    #[serde(skip_serializing)]
+    pub email_confirmation_required: bool,
 }
 
 impl User {
-    pub fn is_password_ok(&self, password: &str) -> AppResult<bool> {
+    pub fn is_password_ok(&self, password: &str) -> AppResult<bool> {        
         argon2::verify_encoded_ext(
             &self.hash, 
             password.as_bytes(), 
@@ -40,6 +42,10 @@ impl User {
                 dbg!(err);
                 AppError::Unauthorized
             })
+    }
+
+    pub fn can_login(&self) -> bool {
+        !self.email_confirmation_required
     }
 }
 
@@ -77,21 +83,27 @@ pub fn get_by_reset_password_hash(
 
 pub fn create(
     data: UserForm,
+    email_confirmation_hash: &str,
     conn: &PgConnection
-) -> ORMResult<User> {
+) -> ORMResult<(User, i64)> {
     use crate::schema::users::dsl::users;
+    let em8l = data.email;
 
-    conn.transaction::<User, Error, _>(move || {
+    conn.transaction::<(User, i64), Error, _>(move || {
         diesel::insert_into(users)
             .values(data)
             .execute(conn)?;
+
+        let expire_timestamp = update_reset_password_hash(em8l, email_confirmation_hash, conn)?;
 
         let user_id = users
             .select(id)
             .order(id.desc())
             .first(conn)?;
 
-        get(&user_id, conn)       
+        let user = get(&user_id, conn)?;   
+
+        Ok((user, expire_timestamp))
     })
 }
 
@@ -109,6 +121,24 @@ pub fn update_reset_password_hash(
         )).execute(conn)?;
 
     Ok(time_in_4_hours)
+}
+
+pub fn update_email(
+    new_email: &str,
+    ssteam_id: &u64,
+    email_confirmation_hash: &str,
+    conn: &PgConnection
+) -> ORMResult<(User, i64)> {
+    conn.transaction::<(User, i64), Error, _>(move || {
+        diesel::update(users.filter(steam_id.eq(ssteam_id.to_string())))
+            .set(email.eq(new_email)).execute(conn)?;
+
+        let expire_timestamp = update_reset_password_hash(new_email, email_confirmation_hash, conn)?;
+
+        let user = get_by_email(new_email, conn)?;   
+
+        Ok((user, expire_timestamp))
+    })
 }
 
 pub fn update_password(
@@ -142,4 +172,18 @@ pub fn cancel_reset_password_hash(
         )).execute(conn)?;
 
     Ok(())
-} 
+}
+
+pub fn confirm_email(reset_pass_hash: &str, conn: &PgConnection) -> ORMResult<()> {
+    let new_reset_password_hash: Option<String> = None; 
+    let new_expire_at: Option<NaiveDateTime> = None;
+
+    diesel::update(users.filter(reset_password_hash.eq(reset_pass_hash.clone())))
+        .set((
+            reset_password_hash.eq(new_reset_password_hash),
+            password_hash_expire_at.eq(new_expire_at),
+            email_confirmation_required.eq(false)
+        )).execute(conn)?;
+
+    Ok(())
+}

@@ -16,4 +16,8 @@ pub fn get_all() -> Scope {
         .service(
             web::resource("/user/create")
                 .route(web::post().to(user::create)))
+        .service(
+            web::resource("/email-confirmation")
+                .route(web::post().to(auth::email_confirmation))
+                .route(web::put().to(auth::update_email_confirmation)))
 }

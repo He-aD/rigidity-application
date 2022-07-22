@@ -19,6 +19,9 @@ pub enum AppError {
 
     #[display(fmt = "Unauthorized")]
     Unauthorized,
+
+    #[display(fmt = "Forbidden")]
+    Forbidden,
 }
 
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
@@ -31,12 +34,15 @@ impl ResponseError for AppError {
                 println!("Internal Server Error trace: {}", trace);
                 HttpResponse::InternalServerError()
                 .json("Internal Server Error, Please try later")
-            },
+            }
             AppError::BadRequest(ref message) => {
                 HttpResponse::BadRequest().json(message)
             }
             AppError::Unauthorized => {
                 HttpResponse::Unauthorized().json("Unauthorized")
+            }
+            AppError::Forbidden => {
+                HttpResponse::Forbidden().json("Forbidden")
             }
         }
     }

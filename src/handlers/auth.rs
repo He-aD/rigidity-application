@@ -6,11 +6,9 @@ use crate::errors::{AppResult, AppError};
 use crate::models::user::{self};
 use crate::Pool;
 use crate::services::{email::EmailService, steam::SteamAuthData};
-use argon2::Config;
-use rand::Rng;
-use chrono::{Utc, NaiveDateTime};
-use crate::app_conf::{get_base_url, SECRET_KEY};
-use crate::services::steam;
+use chrono::NaiveDateTime;
+use crate::app_conf::get_base_url;
+use crate::services::{steam, auth as auth_service};
 
 #[derive(Debug, Deserialize)]
 pub struct AuthData {
@@ -44,6 +42,10 @@ fn t_login(
     let email = datas.email.clone();
     match user::get_by_email(&email, &pool.get().unwrap()) {
         Ok(user) => {
+            if !user.can_login() {
+                return Err(AppError::Forbidden);
+            }
+            
             if user.is_password_ok(&datas.password)? {
                 return Ok(user);
             }
@@ -66,8 +68,12 @@ pub async fn login_steam(
     match user::get_by_steam_id(&steam_id.to_string(), &pool.get().unwrap()) {
         Ok(user) => {
             steam::check_app_ownership(&auth_data.app_id, &steam_id).await?;
-            id.remember(user.id.to_string());
-            Ok(HttpResponse::Ok().json(user))
+            if user.can_login() {
+                id.remember(user.id.to_string());
+                return Ok(HttpResponse::Ok().json(user));
+            }
+            
+            Ok(HttpResponse::Forbidden().json(user))
         }
         Err(_err) => {
             Ok(HttpResponse::Ok().status(StatusCode::SEE_OTHER).finish())
@@ -107,7 +113,7 @@ fn t_ask_password_reset(
     data: web::Json<AskPassData>,
     pool: web::Data<Pool>
 ) -> AppResult<()> {
-    let hash = new_reset_password_hash()?;
+    let hash = auth_service::new_reset_password_hash()?;
     let result  = user::update_reset_password_hash(
         &data.email, 
         &hash,
@@ -142,24 +148,6 @@ fn t_ask_password_reset(
     } 
 }
 
-fn new_reset_password_hash() -> AppResult<String> {
-    let rng = rand::thread_rng().gen::<i64>().to_string();
-    hash(&rng)
-}
-
-fn hash(to_hash: &str) -> AppResult<String> {
-    let config = Config {
-        secret: SECRET_KEY.as_bytes(),
-        ..Default::default()
-    };
-    
-    let salt = std::env::var("SALT").unwrap_or_else(|_| "0123".repeat(8));
-    argon2::hash_encoded(to_hash.as_bytes(), &salt.as_bytes(), &config)
-        .map_err(|err| {
-        AppError::InternalServerError(err.to_string())
-    })
-}
-
 #[derive(Debug, Deserialize)]
 pub struct ResetPassData {
     pub hash: String,
@@ -192,30 +180,11 @@ fn t_reset_password(
     pool: web::Data<Pool>
 ) -> AppResult<()> {
     let conn = &pool.get().unwrap();
-    let expired_error = Err(AppError::BadRequest(String::from("The link you used has expired. Make a new request.")));
 
-    if let Ok(user) = user::get_by_reset_password_hash(&data.hash, conn) {
-        if let Some(expire_date) = user.password_hash_expire_at {
-            let now = NaiveDateTime::from_timestamp(Utc::now().timestamp(), 0);
-            if expire_date >= now {
-                match hash(&data.new_password) {
-                    Ok(new_hash) => user::update_password(&data, &new_hash, conn)?,
-                    Err(err) => return Err(AppError::InternalServerError(err.to_string()))
-                }
-            } else {
-                if let Err(err) = user::cancel_reset_password_hash(&data.hash, conn) {
-                    return Err(AppError::InternalServerError(err.to_string()));
-                }
-                println!("ex3");
-                return expired_error;
-            }
-        } else {
-            println!("ex2");
-            return expired_error;
-        }
-    } else {
-        println!("ex1");
-        return expired_error;
+    auth_service::check_reset_password_hash(&data.hash, conn)?;
+    match auth_service::hash_password(&data.new_password) {
+        Ok(new_hash) => user::update_password(&data, &new_hash, conn)?,
+        Err(err) => return Err(AppError::InternalServerError(err.to_string()))
     }
 
     Ok(())
@@ -228,4 +197,50 @@ pub async fn refresh_cookie(
     id.forget();
     id.remember(user_id);
     Ok(HttpResponse::Ok().finish())
+}
+
+#[derive(Deserialize)]
+pub struct EmailConfirmationData {
+    pub hash: String
+}
+
+pub async fn email_confirmation(
+    data: web::Json<EmailConfirmationData>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    match web::block(move ||
+        auth_service::email_confirmation(&data.hash, &pool.get().unwrap())).await {   
+        Ok(_) => {
+            Ok(HttpResponse::Ok().finish())
+        }
+        Err(err) => match err {
+            BlockingError::Error(error) => Err(error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }
+    }    
+}
+
+#[derive(Deserialize)]
+pub struct UpdateEmailConfirmationData {
+    pub email: String,
+    pub auth: steam::SteamAuthData
+}
+
+pub async fn update_email_confirmation(
+    data: web::Json<UpdateEmailConfirmationData>,
+    pool: web::Data<Pool>
+) -> AppResult<HttpResponse> {
+    let steam_id = auth_service::steam_authenticate_and_ownership_check(&data.auth).await?;
+
+    match web::block(move ||
+        auth_service::update_email_confirmation(
+            &data.email, &steam_id, &pool.get().unwrap())).await {
+        Ok(_) => {
+            Ok(HttpResponse::Ok().finish())
+        }
+        Err(err) => match err {
+            BlockingError::Error(error) => Err(error),
+            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
+        }   
+    }
 }

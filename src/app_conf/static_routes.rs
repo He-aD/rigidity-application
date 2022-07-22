@@ -7,6 +7,7 @@ const AUTHORIZED_STATIC_PATHS: & [&str] = &[
     "ask_password_reset.html", 
     "login.html",
     "reset_password.html",
+    "email_confirmation.html",
     "main.css", 
     "main.js"
 ];

@@ -43,6 +43,7 @@ table! {
         first_name -> Varchar,
         last_name -> Varchar,
         birth_date -> Timestamp,
+        email_confirmation_required -> Bool,
     }
 }
 

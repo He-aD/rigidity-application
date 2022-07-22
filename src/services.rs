@@ -24,6 +24,7 @@ pub mod websocket;
 pub mod custom_room;
 pub mod aws;
 pub mod steam;
+pub mod auth;
 
 // Serialize and deserialize logic for dealing with nested values reprsented as
 // JSON strings.

@@ -2,11 +2,10 @@ use serde::{Deserialize};
 use crate::chrono::{DateTime, Utc};
 use actix_web::{HttpResponse, error::{BlockingError}, web};
 use crate::Pool;
-use actix_identity::Identity;
 use crate::{errors::{AppResult, AppError}};
 use crate::models::user::{create as create_user};
 use crate::models::forms::user::UserForm;
-use crate::services::steam;
+use crate::services::{steam, auth as auth_service};
 
 #[derive(Deserialize)]
 pub struct CreateUserData {
@@ -20,20 +19,25 @@ pub struct CreateUserData {
 
 pub async fn create(
     create_data: web::Json<CreateUserData>,
-    id: Identity,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {    
-    let steam_id = steam::authenticate_user_ticket(&create_data.auth).await?;
+    let steam_id = auth_service::steam_authenticate_and_ownership_check(&create_data.auth).await?;
     let data = create_data.into_inner();
-    steam::check_app_ownership(&data.auth.app_id, &steam_id).await?; 
+    let email_confirmation_hash = auth_service::new_reset_password_hash()?;
 
     match web::block(move || 
         create_user(
             UserForm::new_from_data(&data, &steam_id.to_string()), 
-            &pool.get().unwrap())).await {
-        Ok(user) => {
-            id.remember(user.id.to_string());
-            Ok(HttpResponse::Ok().json(user))
+            &email_confirmation_hash,&pool.get().unwrap())).await {
+        Ok((user, expire_timestamp)) => {
+            match &user.reset_password_hash {
+                Some(hash) => {
+                    let _r = auth_service::send_confirmation_email(&user.email, expire_timestamp, &hash);
+                    Ok(HttpResponse::Ok().json(user))
+                }
+                None => return Err(AppError::InternalServerError(
+                    format!("Reset password hash was not set up properly.")))
+            }
         }
         Err(err) => match err {
             BlockingError::Error(model_err) => Err(AppError::BadRequest(model_err.to_string())),
