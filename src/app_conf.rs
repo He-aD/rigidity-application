@@ -103,9 +103,9 @@ pub fn set_env() {
     //check postgre URI
     std::env::var("POSTGRESQL_ADDON_URI").expect("Missing POSTGRESQL_ADDON_URI env variable.");
     std::env::var("DOMAIN").expect("Missing DOMAIN env variable.");
-    std::env::var("MAILGUN_DOMAIN").expect("Missing MAILGUN_DOMAIN env variable.");
-    std::env::var("MAILGUN_KEY").expect("Missing MAILGUN_KEY env variable.");
-    std::env::var("MAILGUN_MAIL_ADDRESS").expect("Missing MAILGUN_MAIL_ADDRESS env variable.");
+    std::env::var("EMAIL_DOMAIN").expect("Missing EMAIL_DOMAIN env variable.");
+    std::env::var("EMAIL_KEY").expect("Missing EMAIL_KEY env variable.");
+    std::env::var("EMAIL_DEFAULT_ADDRESS").expect("Missing EMAIL_DEFAULT_ADDRESS env variable.");
     std::env::var("MAX_NB_WORKERS").expect("Missing MAX_NB_WORKERS env variable.");
     std::env::var("MAX_DB_CONNS_WORKER").expect("Missing MAX_DB_CONNS_WORKER env variable.");
     std::env::var("AWS_ACCESS_KEY_ID").expect("Missing AWS_ACCESS_KEY_ID env variable.");

@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate diesel;
-extern crate mailgun_rs;
 extern crate chrono;
 
 use diesel::{r2d2::ConnectionManager, PgConnection};

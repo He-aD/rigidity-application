@@ -32,7 +32,7 @@ pub async fn create(
         Ok((user, expire_timestamp)) => {
             match &user.reset_password_hash {
                 Some(hash) => {
-                    let _r = auth_service::send_confirmation_email(&user.email, expire_timestamp, &hash);
+                    let _r = auth_service::send_confirmation_email(&user.email, expire_timestamp, &hash).await;
                     Ok(HttpResponse::Ok().json(user))
                 }
                 None => return Err(AppError::InternalServerError(

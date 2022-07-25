@@ -8,6 +8,8 @@ use crate::services::email::EmailService;
 use chrono::{Utc, NaiveDateTime};
 use crate::models::user::{self};
 use crate::services::steam;
+use actix_web::web;
+use crate::Pool;
 
 pub fn new_reset_password_hash() -> AppResult<String> {
     let rng = rand::thread_rng().gen::<i64>().to_string();
@@ -46,7 +48,7 @@ pub fn check_reset_password_hash(hash: &str, conn: &PgConnection) -> AppResult<(
     }
 }
 
-pub fn send_confirmation_email(email: &str, expire_timestamp: i64, hash: &str) -> AppResult<()> {
+pub async fn send_confirmation_email(email: &str, expire_timestamp: i64, hash: &str) -> AppResult<()> {
     let url = format!("{}/static/email_confirmation.html?id={}", get_base_url(), hash);
     let expire_time = NaiveDateTime::from_timestamp(
         expire_timestamp, 0).format("%c");
@@ -58,14 +60,8 @@ pub fn send_confirmation_email(email: &str, expire_timestamp: i64, hash: &str) -
         link
     );
     
-    match email_service.send() {
-        Ok(_response) => {
-            Ok(())
-        }
-        Err(err) => {
-            Err(AppError::ServiceUnavailable(format!("Email service unavailable. Message: {}", err)))
-        }
-    }
+    email_service.send().await?;
+    Ok(())
 }
 
 pub fn email_confirmation(hash: &str, conn: &PgConnection) -> AppResult<()> {
@@ -75,20 +71,29 @@ pub fn email_confirmation(hash: &str, conn: &PgConnection) -> AppResult<()> {
     Ok(())
 }
 
-pub fn update_email_confirmation(
-    email: &str, steam_id: &u64, conn: &PgConnection) -> AppResult<()> {
-    let user = user::get_by_steam_id(&steam_id.to_string(), conn)?;
+pub async fn update_email_confirmation(
+    email: String, steam_id: u64, pool: web::Data<Pool>) -> AppResult<()> {
+    let c_email = email.clone();
+    let (expire_time_stamp, email_confirmation_hash) = web::block(move || 
+        t_update_email_confirmation(email, steam_id, pool)).await?;
+    send_confirmation_email(&c_email, expire_time_stamp, &email_confirmation_hash).await?;
     
+    Ok(())
+}
+
+pub fn t_update_email_confirmation(
+    email: String, steam_id: u64, pool: web::Data<Pool>) -> AppResult<(i64, String)> {
+    let conn = &pool.get().unwrap(); 
+    let user = user::get_by_steam_id(&steam_id.to_string(), conn)?;
+
     if user.email_confirmation_required {
         let email_confirmation_hash = new_reset_password_hash()?;
         let (_user, expire_time_stamp) = user::update_email(
-            email, steam_id, &email_confirmation_hash, conn)?;
-        send_confirmation_email(email, expire_time_stamp, &email_confirmation_hash)?;
+            &email, &steam_id, &email_confirmation_hash, conn)?;
+            Ok((expire_time_stamp, email_confirmation_hash))
     } else {
         return Err(AppError::Forbidden);
     }
-
-    Ok(())
 }
 
 pub async fn steam_authenticate_and_ownership_check(

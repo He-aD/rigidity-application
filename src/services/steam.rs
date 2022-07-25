@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use crate::errors::{AppResult, AppError};
 use serde::Deserialize;
 use serde_json;
-// use crate::chrono::{DateTime, Utc};
 
 const STEAM_DOMAIN: &str = "partner.steam-api.com";
 const UNIVERSAL_STEAM_APP_ID: u64 = 480;
@@ -126,12 +125,12 @@ pub async fn check_app_ownership(app_id: &u64, steam_id: &u64) -> AppResult<()> 
             .unwrap();
         
         let client = Client::default();
-        let mut result = client.get(uri)
+        let mut response = client.get(uri)
             .header(http::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
             .send()
             .await?;
             
-        let body = result.body().await?;
+        let body = response.body().await?;
         match serde_json::from_slice::<OwnershipBaseResponse<OwnershipResponse>>(&body) {
             Ok(steam_response) => {
                 if steam_response.app_ownership.result == "OK" && steam_response.app_ownership.owns_app {

@@ -1,4 +1,4 @@
-use actix_web::{error::{ResponseError, PayloadError}, HttpResponse, client::SendRequestError};
+use actix_web::{error::{BlockingError, ResponseError, PayloadError}, HttpResponse, client::SendRequestError, client::HttpError};
 use derive_more::Display;
 use diesel::result::{DatabaseErrorKind, Error as DBError};
 use std::convert::From;
@@ -31,9 +31,8 @@ impl ResponseError for AppError {
             AppError::ServiceUnavailable(ref message) => HttpResponse::ServiceUnavailable()
                 .json(message),
             AppError::InternalServerError(ref trace) => {
-                println!("Internal Server Error trace: {}", trace);
                 HttpResponse::InternalServerError()
-                .json("Internal Server Error, Please try later")
+                .json(trace)
             }
             AppError::BadRequest(ref message) => {
                 HttpResponse::BadRequest().json(message)
@@ -79,5 +78,20 @@ impl From<PayloadError> for AppError {
 impl From<SendRequestError> for AppError {
     fn from(error: SendRequestError) -> AppError {
         AppError::BadRequest(format!("A request send by the server has failed. {}", error.to_string()))
+    }
+}
+
+impl From<HttpError> for AppError {
+    fn from(error: HttpError) -> AppError {
+        AppError::InternalServerError(format!("A request build by the server has failed. {}", error.to_string()))
+    }
+}
+
+impl From<BlockingError<AppError>> for AppError {
+    fn from(error: BlockingError<AppError>) -> AppError {
+        match error {
+            BlockingError::Error(err) => err,
+            BlockingError::Canceled => AppError::InternalServerError(error.to_string()),
+        }
     }
 }

@@ -1,5 +1,5 @@
 use actix_identity::Identity;
-use actix_web::{web, error::BlockingError, HttpResponse};
+use actix_web::{web, HttpResponse};
 use actix_web::http::StatusCode;
 use serde::Deserialize;
 use crate::errors::{AppResult, AppError};
@@ -21,17 +21,11 @@ pub async fn login(
     id: Identity,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {    
-    match web::block(move || 
-        t_login(auth_data, pool)).await {
-        Ok(user) => {
-            id.remember(user.id.to_string());
-            Ok(HttpResponse::Ok().json(user))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+    let user = web::block(move || t_login(auth_data, pool)).await?;
+
+    id.remember(user.id.to_string());
+
+    Ok(HttpResponse::Ok().json(user))
 }
 
 fn t_login(
@@ -65,7 +59,8 @@ pub async fn login_steam(
 ) -> AppResult<HttpResponse> {
     let steam_id = steam::authenticate_user_ticket(&auth_data).await?;
 
-    match user::get_by_steam_id(&steam_id.to_string(), &pool.get().unwrap()) {
+    match web::block(move || 
+        user::get_by_steam_id(&steam_id.to_string(), &pool.get().unwrap())).await {
         Ok(user) => {
             steam::check_app_ownership(&auth_data.app_id, &steam_id).await?;
             if user.can_login() {
@@ -97,19 +92,13 @@ pub async fn ask_password_reset(
     data: web::Json<AskPassData>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    match web::block(move || 
-        t_ask_password_reset(data, pool)).await {
-        Ok(_) => {
-            Ok(HttpResponse::Ok().finish())
-        }
-        Err(err) => match err {
-            BlockingError::Error(error) => Err(error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
+    match t_ask_password_reset(data, pool).await {
+        Ok(_) => Ok(HttpResponse::Ok().finish()),
+        Err(err) => Err(err)
     }    
 }
 
-fn t_ask_password_reset(
+async fn t_ask_password_reset(
     data: web::Json<AskPassData>,
     pool: web::Data<Pool>
 ) -> AppResult<()> {
@@ -133,7 +122,7 @@ fn t_ask_password_reset(
                 link
             );
             
-            match email_service.send() {
+            match email_service.send().await {
                 Ok(_response) => {
                     Ok(())
                 }
@@ -158,21 +147,14 @@ pub async fn reset_password(
     data: web::Json<ResetPassData>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    match web::block(move || 
-        t_reset_password(data, pool)).await {
-        Ok(_) => {
-            Ok(HttpResponse::TemporaryRedirect()
-                .status(StatusCode::SEE_OTHER)
-                .set_header(
-                    "Location", 
-                    "/login.html")
-                .finish())
-        }
-        Err(err) => match err {
-            BlockingError::Error(error) => Err(error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }    
+    web::block(move || t_reset_password(data, pool)).await?;
+
+    Ok(HttpResponse::TemporaryRedirect()
+        .status(StatusCode::SEE_OTHER)
+        .set_header(
+            "Location", 
+            "/login.html")
+        .finish())
 }
 
 fn t_reset_password(
@@ -208,16 +190,10 @@ pub async fn email_confirmation(
     data: web::Json<EmailConfirmationData>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    match web::block(move ||
-        auth_service::email_confirmation(&data.hash, &pool.get().unwrap())).await {   
-        Ok(_) => {
-            Ok(HttpResponse::Ok().finish())
-        }
-        Err(err) => match err {
-            BlockingError::Error(error) => Err(error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }    
+    web::block(move ||
+        auth_service::email_confirmation(&data.hash, &pool.get().unwrap())).await?; 
+
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[derive(Deserialize)]
@@ -232,15 +208,8 @@ pub async fn update_email_confirmation(
 ) -> AppResult<HttpResponse> {
     let steam_id = auth_service::steam_authenticate_and_ownership_check(&data.auth).await?;
 
-    match web::block(move ||
-        auth_service::update_email_confirmation(
-            &data.email, &steam_id, &pool.get().unwrap())).await {
-        Ok(_) => {
-            Ok(HttpResponse::Ok().finish())
-        }
-        Err(err) => match err {
-            BlockingError::Error(error) => Err(error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }   
-    }
+    auth_service::update_email_confirmation(
+        data.email.clone(), steam_id, pool).await?;
+    
+    Ok(HttpResponse::Ok().finish())
 }
