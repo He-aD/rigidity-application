@@ -1,6 +1,6 @@
 use actix_web::{error::{BlockingError, ResponseError, PayloadError}, HttpResponse, client::SendRequestError, client::HttpError};
 use derive_more::Display;
-use diesel::result::{DatabaseErrorKind, Error as DBError};
+use diesel::result::{Error as DBError};
 use std::convert::From;
 use serde_json;
 
@@ -50,14 +50,12 @@ impl ResponseError for AppError {
 impl From<DBError> for AppError {
     fn from(error: DBError) -> AppError {
         match error {
-            DBError::DatabaseError(kind, info) => {
-                if let DatabaseErrorKind::UniqueViolation = kind {
-                    let message =
-                        info.details().unwrap_or_else(|| info.message()).to_string();
-                    return AppError::BadRequest(message);
-                }
-                AppError::InternalServerError(String::from("Database error"))
-            }
+            DBError::DatabaseError(_kind, info) => {
+                return AppError::BadRequest(info.details().unwrap_or_else(|| info.message()).to_string());
+            },
+            DBError::NotFound => {
+                return AppError::BadRequest(format!("Databse error not found."));
+            },
             _ => AppError::InternalServerError(String::from("Database error")),
         }
     }

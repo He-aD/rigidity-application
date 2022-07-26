@@ -9,10 +9,15 @@
     <script src="main.js"></script>
   </head>
   <body>
-    <div class="login">
+    <div class="login" hidden>
       <h1>You have successfully confirmed your e-mail !</h1>
 
       <p>You can now back to the game</p>
+    </div>
+    <div class="error" hidden>
+      <h1>The link you clicked on has expired or is wrong !</h1>
+
+      <p>You can generate a new one in game</p>
     </div>
   </body>
 </html>
@@ -29,6 +34,11 @@
   let reset_hash = getUrlVars().id;
 
   post('/api-open/email-confirmation', {hash: reset_hash}).then(data => {
+    if (data.status == 200) {
+      document.getElementsByClassName("login")[0].removeAttribute("hidden");
+    } else {
+      document.getElementsByClassName("error")[0].removeAttribute("hidden");
+    }
     console.error(data);
   });
 </script>

@@ -7,6 +7,15 @@
     color:#FFF;
 }
 
+.error { 
+    width:600px;
+    margin:auto;
+    border:1px #CCC solid;
+    padding:0px 30px;
+    background-color: #af3b4a;
+    color:#FFF;
+}
+
 .field { 
     background: #1e4f8a;
     border:1px #03306b solid;

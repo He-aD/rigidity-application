@@ -39,7 +39,7 @@ pub fn check_reset_password_hash(hash: &str, conn: &PgConnection) -> AppResult<(
             Ok(())
         } else {
             if let Err(err) = user::cancel_reset_password_hash(&hash, conn) {
-                return Err(AppError::InternalServerError(err.to_string()));
+                return Err(AppError::BadRequest(err.to_string()));
             }
             return expired_error;
         }
@@ -52,7 +52,7 @@ pub async fn send_confirmation_email(email: &str, expire_timestamp: i64, hash: &
     let url = format!("{}/static/email_confirmation.html?id={}", get_base_url(), hash);
     let expire_time = NaiveDateTime::from_timestamp(
         expire_timestamp, 0).format("%c");
-    let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}.</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
+    let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
 
     let email_service = EmailService::new(
         email,
