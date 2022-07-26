@@ -32,7 +32,7 @@ impl<'a> EmailService<'a> {
 
     #[cfg(not(debug_assertions))]
     pub async fn send(&self) -> AppResult<()> {
-        self._send()
+        self._send().await
     }
 
     async fn _send(&self) -> AppResult<()> {
