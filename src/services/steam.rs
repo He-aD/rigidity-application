@@ -41,13 +41,13 @@ struct AuthenticateUserTicketResponse {
 struct ErrorResponse {
     // #[serde(rename = "errorcode")]
     // error_code: i32,
-    #[serde(rename = "errordesc")]
-    message: String,
+    // #[serde(rename = "errordesc")]
+    // message: String,
 }
 
 #[derive(Deserialize)]
 struct Error {
-    error: ErrorResponse
+    // error: ErrorResponse
 }
 
 pub async fn authenticate_user_ticket(data: &SteamAuthData) -> AppResult<u64> {
@@ -81,8 +81,8 @@ pub async fn authenticate_user_ticket(data: &SteamAuthData) -> AppResult<u64> {
             }
         },
         Err(_) => {
-            let steam_error = serde_json::from_slice::<AuthResponseBase<Error>>(&body)?;
-            Err(AppError::BadRequest(steam_error.response.error.message))
+            // let _steam_error = serde_json::from_slice::<AuthResponseBase<Error>>(&body)?;
+            Err(AppError::Unauthorized)
         }
     }
 }
