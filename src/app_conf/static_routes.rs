@@ -1,22 +1,31 @@
 use actix_files;
-use actix_web::{HttpResponse, Resource, Scope, guard, web};
+use actix_web::{HttpRequest, Result, HttpResponse, Resource, Scope, guard, web};
 use actix_web::http::{StatusCode};
-use std::{fs, io};
+use std::{fs, io, path::PathBuf};
 
 const AUTHORIZED_STATIC_PATHS: & [&str] = &[
     "ask_password_reset.html", 
     "login.html",
     "reset_password.html",
     "email_confirmation.html",
-    "main.css", 
-    "main.js"
 ];
 
 pub fn get_all() -> Scope {
     web::scope("/static")
         .service(web::resource("/{html_file_path}")
-            .route(web::get().to(static_file_http_response))
-        )
+            .route(web::get().to(static_file_http_response)))
+        .service(web::resource("/assets/{filename:.*}")
+            .route(web::get().to(file)))
+}
+
+async fn file(req: HttpRequest) -> Result<actix_files::NamedFile> {
+    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
+    let mut prefix = "static/assets/".to_owned();
+    if let Some(str_path) = path.to_str() {
+        prefix.push_str(str_path);
+    }
+
+    Ok(actix_files::NamedFile::open(prefix)?)
 }
 
 async fn p404() -> Result<actix_files::NamedFile, io::Error> {
@@ -51,7 +60,7 @@ async fn static_file_http_response(html_file_path: web::Path<String>) -> HttpRes
         if extension.len() == 0  {
             return error_closure();
         }
-        let full_path = format!("static/{}", html_file_path);
+        let full_path = format!("static/html/{}", html_file_path);
 
         match fs::read_to_string(full_path) {
             Ok(contents) => {

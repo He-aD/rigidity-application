@@ -52,7 +52,9 @@ pub async fn send_confirmation_email(email: &str, expire_timestamp: i64, hash: &
     let url = format!("{}/static/email_confirmation.html?id={}", get_base_url(), hash);
     let expire_time = NaiveDateTime::from_timestamp(
         expire_timestamp, 0).format("%c");
-    let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
+    let studio_logo_url = format!("{}/static/assets/images/logo_studio.png", 
+        get_base_url());
+    let link = format!("<p>Hello, </p><p>Welcome to rigidity!</p><p>Please click on the following link to confirm you email address: <a href='{}'>confirm link</a></p><p>Your link we'll expire at {} (UTC time)</p></br></br><img src='{}'>", url, expire_time, studio_logo_url);
 
     let email_service = EmailService::new(
         email,
