@@ -1,5 +1,6 @@
-use actix_web::{web, client, HttpRequest, web::Payload, HttpResponse};
-use futures::StreamExt;
+use actix_web::{web, HttpRequest, web::Payload, HttpResponse};
+use awc::Client;
+use futures_util::StreamExt;
 use crate::errors::{AppError, AppResult};
 use serde_json::{from_slice};
 use serde::Deserialize;
@@ -56,7 +57,7 @@ async fn handle_sns_subscription(
     if let Ok(obj) = from_slice::<SnsData>(&body) {
         let obj: SnsData = obj;
 
-        let client = client::Client::default();
+        let client = Client::default();
         match client.get(obj.subscribe_url).send().await {
             Ok(_) => return Ok(HttpResponse::Ok().finish()),
             Err(err) => {

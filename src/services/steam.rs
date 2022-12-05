@@ -1,4 +1,5 @@
-use actix_web::{http, http::uri::Builder, client::Client};
+use actix_web::{http, http::uri::Builder};
+use awc::Client;
 use crate::services::make_path_and_query;
 use std::collections::HashMap;
 use crate::errors::{AppResult, AppError};
@@ -66,7 +67,7 @@ pub async fn authenticate_user_ticket(data: &SteamAuthData) -> AppResult<u64> {
     
     let client = Client::default();
     let mut result = client.get(uri)
-        .header(http::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .insert_header((http::header::CONTENT_TYPE, "application/x-www-form-urlencoded"))
         .send()
         .await?;
 
@@ -126,7 +127,7 @@ pub async fn check_app_ownership(app_id: &u64, steam_id: &u64) -> AppResult<()> 
         
         let client = Client::default();
         let mut response = client.get(uri)
-            .header(http::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .insert_header((http::header::CONTENT_TYPE, "application/x-www-form-urlencoded"))
             .send()
             .await?;
             

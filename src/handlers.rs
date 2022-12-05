@@ -15,7 +15,7 @@ pub async fn new_websocket(
     id: Identity,
     srv: Data<Addr<WebsocketLobby>>
 ) -> AppResult<HttpResponse> {    
-    if let Some(user_id) = id.identity() {
+    if let Ok(user_id) = id.id() {
         match new_connection(
             req, 
             stream, 

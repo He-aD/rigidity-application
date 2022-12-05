@@ -1,5 +1,5 @@
 use actix_identity::Identity;
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpResponse, HttpRequest, HttpMessage};
 use actix_web::http::StatusCode;
 use serde::Deserialize;
 use crate::errors::{AppResult, AppError};
@@ -17,13 +17,15 @@ pub struct AuthData {
 }
 
 pub async fn login(
+    request: HttpRequest,
     auth_data: web::Json<AuthData>,
-    id: Identity,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {    
-    let user = web::block(move || t_login(auth_data, pool)).await?;
+    let user = web::block(move || t_login(auth_data, pool)).await??;
 
-    id.remember(user.id.to_string());
+    if let Err(err) = Identity::login(&request.extensions(), user.id.to_string()) {
+        return Err(AppError::InternalServerError(err.to_string()))
+    }
 
     Ok(HttpResponse::Ok().json(user))
 }
@@ -53,33 +55,30 @@ fn t_login(
 }
 
 pub async fn login_steam(
+    request: HttpRequest,
     auth_data: web::Json<SteamAuthData>,
-    id: Identity,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     let steam_id = steam::authenticate_user_ticket(&auth_data).await?;
 
-    match web::block(move || 
-        user::get_by_steam_id(&steam_id.to_string(), &pool.get().unwrap())).await {
-        Ok(user) => {
-            steam::check_app_ownership(&auth_data.app_id, &steam_id).await?;
-            if user.can_login() {
-                id.remember(user.id.to_string());
-                return Ok(HttpResponse::Ok().json(user));
-            }
-            
-            Ok(HttpResponse::Forbidden().json(user))
+    let user = web::block(move || 
+        user::get_by_steam_id(&steam_id.to_string(), &pool.get().unwrap())).await??;
+    
+    steam::check_app_ownership(&auth_data.app_id, &steam_id).await?;
+    if user.can_login() {
+        if let Err(err) = Identity::login(&request.extensions(), user.id.to_string()) {
+            return Err(AppError::InternalServerError(err.to_string()))
         }
-        Err(_err) => {
-            Ok(HttpResponse::Ok().status(StatusCode::SEE_OTHER).finish())
-        }
+        return Ok(HttpResponse::Ok().json(user));
     }
+    
+    Ok(HttpResponse::Forbidden().json(user))
 }
 
 pub async fn logout(
     id: Identity,
 ) -> AppResult<HttpResponse> {    
-    id.forget();
+    id.logout();
     Ok(HttpResponse::Ok().finish())
 }
 
@@ -112,7 +111,7 @@ async fn t_ask_password_reset(
     match result {
         Ok(expire_time) => {
             let url = format!("{}/static/reset_password.html?id={}", get_base_url(), hash);
-            let expire_time = NaiveDateTime::from_timestamp(expire_time, 0)
+            let expire_time = NaiveDateTime::from_timestamp_opt(expire_time, 0).unwrap()
                 .format("%c");
             let link = format!("<h1>Hello !</h1><br/><p>Here's your link: {}.</p><p>Your link we'll expire at {} (UTC time)</p>", url, expire_time);
     
@@ -147,13 +146,13 @@ pub async fn reset_password(
     data: web::Json<ResetPassData>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    web::block(move || t_reset_password(data, pool)).await?;
+    web::block(move || t_reset_password(data, pool)).await??;
 
     Ok(HttpResponse::TemporaryRedirect()
         .status(StatusCode::SEE_OTHER)
-        .set_header(
+        .insert_header((
             "Location", 
-            "/login.html")
+            "/login.html"))
         .finish())
 }
 
@@ -173,11 +172,16 @@ fn t_reset_password(
 }
 
 pub async fn refresh_cookie(
+    request: HttpRequest,
     id: Identity,
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    id.forget();
-    id.remember(user_id);
+    let user_id = id.id().unwrap();
+    id.logout();
+
+    if let Err(err) = Identity::login(&request.extensions(), user_id) {
+        return Err(AppError::InternalServerError(err.to_string()))
+    }
+
     Ok(HttpResponse::Ok().finish())
 }
 
@@ -191,7 +195,7 @@ pub async fn email_confirmation(
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
     web::block(move ||
-        auth_service::email_confirmation(&data.hash, &pool.get().unwrap())).await?; 
+        auth_service::email_confirmation(&data.hash, &pool.get().unwrap())).await??; 
 
     Ok(HttpResponse::Ok().finish())
 }

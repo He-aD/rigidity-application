@@ -1,9 +1,8 @@
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
-use actix_web::{middleware};
-use actix_identity::{CookieIdentityPolicy, IdentityService};
-use time::Duration;
+use actix_web::{cookie::Key, middleware};
 use super::{Pool};
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 
 pub mod static_routes;
 pub mod open_routes;
@@ -12,7 +11,13 @@ pub mod ws_routes;
 pub mod aws_routes;
 
 lazy_static::lazy_static! {
-    pub static ref SECRET_KEY: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(8));
+    pub static ref SECRET_KEY: String = std::env::var("SECRET_KEY").unwrap_or_else(|_| "0123".repeat(16));
+}
+
+pub fn middleware_cookie_session() -> SessionMiddleware<CookieSessionStore> {
+    SessionMiddleware::new(
+        CookieSessionStore::default(), 
+        Key::from(SECRET_KEY.as_bytes()))
 }
 
 #[cfg(debug_assertions)]
@@ -23,17 +28,6 @@ pub fn nb_worker() -> Option<u32> {
 #[cfg(debug_assertions)]
 pub fn middleware_logger() -> middleware::Logger {
     middleware::Logger::default()
-}
-
-#[cfg(debug_assertions)]
-pub fn middleware_identity_service() -> IdentityService<CookieIdentityPolicy> {
-    IdentityService::new(
-        CookieIdentityPolicy::new(SECRET_KEY.as_bytes())
-            .name("rigidity-app")
-            .domain(get_domain().as_str())
-            .max_age_time(Duration::days(1))
-            .secure(false), // this can only be true if you have https
-    )
 }
 
 #[cfg(debug_assertions)]
@@ -85,17 +79,6 @@ pub fn nb_worker() -> Option<u32> {
 #[cfg(not(debug_assertions))]
 pub fn middleware_logger() -> middleware::Logger {
     middleware::Logger::default()
-}
-
-#[cfg(not(debug_assertions))]
-pub fn middleware_identity_service() -> IdentityService<CookieIdentityPolicy> {
-    IdentityService::new(
-        CookieIdentityPolicy::new(SECRET_KEY.as_bytes())
-            .name("rigidity-app")
-            .domain(get_domain().as_str())
-            .max_age_time(Duration::days(1))
-            .secure(true), // this can only be true if you have https
-    )
 }
 
 #[cfg(not(debug_assertions))]

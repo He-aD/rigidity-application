@@ -1,12 +1,14 @@
-use actix_web::{error::{BlockingError, ResponseError, PayloadError}, HttpResponse, client::SendRequestError, client::HttpError};
+use actix_web::{error::{BlockingError, ResponseError, PayloadError}, HttpResponse};
 use derive_more::Display;
 use diesel::result::{Error as DBError};
 use std::convert::From;
 use serde_json;
+use serde::{Serialize};
+use awc::error::{SendRequestError, HttpError};
 
 pub type AppResult<R> = Result<R, AppError>;
 
-#[derive(Debug, Display)]
+#[derive(Debug, Display, Serialize)]
 pub enum AppError {
     #[display(fmt = "Service Unavailable")]
     ServiceUnavailable(String),
@@ -85,11 +87,8 @@ impl From<HttpError> for AppError {
     }
 }
 
-impl From<BlockingError<AppError>> for AppError {
-    fn from(error: BlockingError<AppError>) -> AppError {
-        match error {
-            BlockingError::Error(err) => err,
-            BlockingError::Canceled => AppError::InternalServerError(error.to_string()),
-        }
+impl From<BlockingError> for AppError {
+    fn from(error: BlockingError) -> AppError {
+        AppError::InternalServerError(error.to_string())
     }
 }
