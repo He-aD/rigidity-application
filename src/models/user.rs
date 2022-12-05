@@ -117,7 +117,7 @@ pub fn update_reset_password_hash(
     diesel::update(users.filter(email.eq(em8l)))
         .set((
             reset_password_hash.eq(h),
-            password_hash_expire_at.eq(NaiveDateTime::from_timestamp(time_in_4_hours, 0))
+            password_hash_expire_at.eq(NaiveDateTime::from_timestamp_opt(time_in_4_hours, 0))
         )).execute(conn)?;
 
     Ok(time_in_4_hours)

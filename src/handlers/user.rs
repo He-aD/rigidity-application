@@ -1,6 +1,6 @@
 use serde::{Deserialize};
 use crate::chrono::{DateTime, Utc};
-use actix_web::{HttpResponse, error::{BlockingError}, web};
+use actix_web::{HttpResponse, web};
 use crate::Pool;
 use crate::{errors::{AppResult, AppError}};
 use crate::models::user::{create as create_user};
@@ -25,23 +25,17 @@ pub async fn create(
     let data = create_data.into_inner();
     let email_confirmation_hash = auth_service::new_reset_password_hash()?;
 
-    match web::block(move || 
+    let (user, expire_timestamp) = web::block(move || 
         create_user(
             UserForm::new_from_data(&data, &steam_id.to_string()), 
-            &email_confirmation_hash,&pool.get().unwrap())).await {
-        Ok((user, expire_timestamp)) => {
-            match &user.reset_password_hash {
-                Some(hash) => {
-                    let _r = auth_service::send_confirmation_email(&user.email, expire_timestamp, &hash).await;
-                    Ok(HttpResponse::Ok().json(user))
-                }
-                None => return Err(AppError::InternalServerError(
-                    format!("Reset password hash was not set up properly.")))
-            }
+            &email_confirmation_hash,&pool.get().unwrap())).await??; 
+
+    match &user.reset_password_hash {
+        Some(hash) => {
+            let _r = auth_service::send_confirmation_email(&user.email, expire_timestamp, &hash).await;
+            Ok(HttpResponse::Ok().json(user))
         }
-        Err(err) => match err {
-            BlockingError::Error(model_err) => Err(AppError::BadRequest(model_err.to_string())),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
+        None => return Err(AppError::InternalServerError(
+            format!("Reset password hash was not set up properly.")))
     }
 }

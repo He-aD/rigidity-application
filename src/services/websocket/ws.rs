@@ -1,7 +1,8 @@
+use actix::prelude::*;
 use actix::{fut, ActorContext};
 use super::messages::{Disconnect, Connect, WsMessage}; //We'll be writing this later
 use super::lobby::Lobby; // as well as this
-use actix::{Actor, Addr, Running, StreamHandler, WrapFuture, ActorFuture, ContextFutureSpawner};
+use actix::{Actor, Addr, Running, StreamHandler, WrapFuture};
 use actix::{AsyncContext, Handler};
 use actix_web_actors::ws;
 use actix_web_actors::ws::Message::Text;

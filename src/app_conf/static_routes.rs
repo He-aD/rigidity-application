@@ -1,7 +1,7 @@
 use actix_files;
-use actix_web::{HttpRequest, Result, HttpResponse, Resource, Scope, guard, web};
+use actix_web::{HttpRequest, Result, HttpResponse, Scope, web};
 use actix_web::http::{StatusCode};
-use std::{fs, io, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 const AUTHORIZED_STATIC_PATHS: & [&str] = &[
     "ask_password_reset.html", 
@@ -28,13 +28,8 @@ async fn file(req: HttpRequest) -> Result<actix_files::NamedFile> {
     Ok(actix_files::NamedFile::open(prefix)?)
 }
 
-async fn p404() -> Result<actix_files::NamedFile, io::Error> {
-    Ok(actix_files::NamedFile::open("static/404.html")?.set_status_code(StatusCode::NOT_FOUND))
-}
-
 async fn static_file_http_response(html_file_path: web::Path<String>) -> HttpResponse {
     // check if it's an authorized path
-    println!("{}", html_file_path);
     let path = html_file_path.to_string();
     let mut find = false;
     for p in AUTHORIZED_STATIC_PATHS {
@@ -84,15 +79,4 @@ async fn static_file_http_response(html_file_path: web::Path<String>) -> HttpRes
             }
         }      
     }
-}
-
-pub fn default_service() -> Resource {
-    web::resource("")
-        .route(web::get().to(p404))
-        // all requests that are not `GET`
-        .route(
-            web::route()
-                .guard(guard::Not(guard::Get()))
-                .to(HttpResponse::MethodNotAllowed),
-    )
 }

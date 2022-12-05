@@ -1,5 +1,5 @@
 use crate::{enums::Archetypes, errors::{AppResult, AppError}};
-use actix_web::{HttpResponse, error::{BlockingError}, web, web::Path};
+use actix_web::{HttpResponse, web, web::Path};
 use crate::enums::{Maps, GameModes};
 use serde::{Serialize, Deserialize};
 use crate::Pool;
@@ -11,18 +11,13 @@ use rusoto_gamelift::GameLiftClient;
 pub mod dtos;
 
 pub async fn get_all(
+    _: Identity,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {    
-    match web::block(move || 
-        service::get_all(&pool.get().unwrap())).await {
-        Ok(custom_rooms) => {
-            Ok(HttpResponse::Ok().json(custom_rooms))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+    let custom_rooms = web::block(move || 
+        service::get_all(&pool.get().unwrap())).await??;
+            
+    Ok(HttpResponse::Ok().json(custom_rooms))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,21 +35,15 @@ pub async fn create(
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    match web::block(move || 
+    let user_id = id.id().unwrap();
+    let custom_room = web::block(move || 
         service::create(
             create_data.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+    
+    Ok(HttpResponse::Ok().json(custom_room))
 }
 
 pub async fn update(
@@ -63,67 +52,49 @@ pub async fn update(
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    match web::block(move || 
+    let user_id = id.id().unwrap();
+    let custom_room = web::block(move || 
         service::update(
             update_data.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+    
+    Ok(HttpResponse::Ok().json(custom_room))
 }
 
 pub async fn join(
-    Path(custom_room_id): Path<i32>,
+   custom_room_id: Path<i32>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    match web::block(move || 
+    let user_id = id.id().unwrap();
+    let custom_room = web::block(move || 
         service::join(
-            custom_room_id,
+            custom_room_id.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+            
+    Ok(HttpResponse::Ok().json(custom_room))
 }
 
 pub async fn quit(
-    Path(custom_room_id): Path<i32>,
+    custom_room_id: Path<i32>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    match web::block(move || 
+    let user_id = id.id().unwrap();
+    let custom_room = web::block(move || 
         service::quit(
-            custom_room_id,
+            custom_room_id.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+            
+    Ok(HttpResponse::Ok().json(custom_room))
 }
 
 pub async fn delete(
@@ -131,20 +102,14 @@ pub async fn delete(
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    match web::block(move || 
+    let user_id = id.id().unwrap();
+    web::block(move || 
         service::delete(
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(_) => {
-            Ok(HttpResponse::Ok().finish())
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+            
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[derive(Debug, Deserialize)]
@@ -154,28 +119,22 @@ pub struct SwitchSlotData {
 }
 
 pub async fn switch_slot(
-    Path(custom_room_id): Path<i32>,
+    custom_room_id: Path<i32>,
     id: Identity,
     position: web::Json<SwitchSlotData>,
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
-    match web::block(move || 
+    let user_id = id.id().unwrap();
+    let custom_room = web::block(move || 
         service::switch_slot(
-            custom_room_id,
+            custom_room_id.into_inner(),
             user_id.parse::<i32>().unwrap(),
             position.into_inner(),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+            
+    Ok(HttpResponse::Ok().json(custom_room))
 }
 
 pub async fn switch_archetype(
@@ -184,24 +143,20 @@ pub async fn switch_archetype(
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
+    let user_id = id.id().unwrap();
     let (custom_room_id, archetype_id) = param.into_inner();
 
     match Archetypes::from_u32(archetype_id) {
-        Some(archetype) => match web::block(move || 
+        Some(archetype) => {
+            let custom_room = web::block(move || 
             service::switch_archetype(
                 custom_room_id,
                 archetype,
                 user_id.parse::<i32>().unwrap(),
                 ws.get_ref().to_owned(),
-                &pool.get().unwrap())).await {
-            Ok(custom_room) => {
-                Ok(HttpResponse::Ok().json(custom_room))
-            }
-            Err(err) => match err {
-                BlockingError::Error(service_error) => Err(service_error),
-                BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-            }
+                &pool.get().unwrap())).await??;
+            
+            Ok(HttpResponse::Ok().json(custom_room))
         },
         None => Err(AppError::BadRequest(format!("Unknown archetype id: {}", archetype_id)))
     }
@@ -213,35 +168,29 @@ pub async fn kick(
     ws: web::Data<Addr<WebsocketLobby>>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
+    let user_id = id.id().unwrap();
     let (custom_room_id, user_id_to_kick) = param.into_inner();
-    match web::block(move || 
+    let custom_room = web::block(move || 
         service::kick(
             custom_room_id,
             user_id_to_kick,
             Some(user_id.parse::<i32>().unwrap()),
             ws.get_ref().to_owned(),
-            &pool.get().unwrap())).await {
-        Ok(custom_room) => {
-            Ok(HttpResponse::Ok().json(custom_room))
-        }
-        Err(err) => match err {
-            BlockingError::Error(service_error) => Err(service_error),
-            BlockingError::Canceled => Err(AppError::InternalServerError(err.to_string())),
-        }
-    }
+            &pool.get().unwrap())).await??;
+            
+    Ok(HttpResponse::Ok().json(custom_room))
 }
 
 pub async fn start_matchmaking(
-    Path(custom_room_id): Path<i32>,
+    custom_room_id: Path<i32>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
     gamelift: web::Data<GameLiftClient>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
+    let user_id = id.id().unwrap();
        match service::start_matchmaking(
-            custom_room_id,
+            custom_room_id.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
             gamelift.get_ref(),
@@ -256,15 +205,15 @@ pub async fn start_matchmaking(
 }
 
 pub async fn stop_matchmaking(
-    Path(custom_room_id): Path<i32>,
+    custom_room_id: Path<i32>,
     id: Identity,
     ws: web::Data<Addr<WebsocketLobby>>,
     gamelift: web::Data<GameLiftClient>,
     pool: web::Data<Pool>
 ) -> AppResult<HttpResponse> {
-    let user_id = id.identity().unwrap();
+    let user_id = id.id().unwrap();
     match service::stop_matchmaking(
-            custom_room_id,
+            custom_room_id.into_inner(),
             user_id.parse::<i32>().unwrap(),
             ws.get_ref().to_owned(),
             gamelift.get_ref(),

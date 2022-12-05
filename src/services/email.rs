@@ -1,6 +1,7 @@
-use actix_web::{http, http::uri::Builder, client::Client};
+use actix_web::{http, http::uri::Builder};
 use crate::errors::{AppResult, AppError};
 use serde::{Serialize, Deserialize};
+use awc::Client;
 
 pub struct EmailService<'a> {
     pub to: &'a str,
@@ -57,10 +58,10 @@ impl<'a> EmailService<'a> {
 
         let client = Client::default();
         let mut response = client.post(uri)
-            .header(http::header::ACCEPT, "application/json")
-            .header("api-key", std::env::var("EMAIL_KEY")
-                .expect("EMAIL_KEY must be set"))
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::ACCEPT, "application/json"))
+            .insert_header(("api-key", std::env::var("EMAIL_KEY")
+                .expect("EMAIL_KEY must be set")))
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .send_json(&email).await?;
 
         if response.status() != http::StatusCode::CREATED {
