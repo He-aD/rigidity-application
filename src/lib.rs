@@ -11,6 +11,7 @@ pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub mod app_conf;
 pub mod enums;
 pub mod services;
+pub mod cmd;
 mod handlers;
 mod models;
 mod errors;

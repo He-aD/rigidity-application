@@ -22,8 +22,7 @@ pub fn hash_password(to_hash: &str) -> AppResult<String> {
         ..Default::default()
     };
     
-    let salt = std::env::var("SALT").unwrap_or_else(|_| "0123".repeat(8));
-    argon2::hash_encoded(to_hash.as_bytes(), &salt.as_bytes(), &config)
+    argon2::hash_encoded(to_hash.as_bytes(), SECRET_KEY.as_bytes(), &config)
         .map_err(|err| {
         AppError::InternalServerError(err.to_string())
     })

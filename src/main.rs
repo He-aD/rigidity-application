@@ -1,13 +1,28 @@
 use actix_web::{web, HttpResponse, web::Data, App, HttpServer};
 use rigidity_application::{
+    cmd::interpret_args,
     services::aws::get_gamelift_client, 
     app_conf, 
     new_websocket_lobby};
 use actix_identity::IdentityMiddleware;
+use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     app_conf::set_env();
+    let mut args: Vec<String> = env::args().collect();
+
+    if args.len() == 1 {
+        return start_server().await
+    } else {
+        args.drain(0..1);
+        interpret_args(args);
+    }
+
+    Ok(())
+}
+
+async fn start_server() -> std::io::Result<()> {
     let conn = app_conf::connect_database();
     let ws_srv = new_websocket_lobby(conn.clone()); //important if clone in closure ref not properly tracked
     let gamelift = get_gamelift_client().await;
