@@ -31,5 +31,5 @@ sparkpost="0.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 time = "0.3.17"
 rand="0.8.1"
-rusoto_core = "0.43.0"
-rusoto_gamelift="0.43.0"
+rusoto_core = "0.48.0"
+rusoto_gamelift="0.48.0"

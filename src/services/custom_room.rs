@@ -327,7 +327,6 @@ pub async fn start_matchmaking(
 
             let ticket_id = Uuid::new_v4();
             let start_matchmaking_input = custom_room.get_start_matchmaking_input(&tuples, &ticket_id);
-            println!("{:?}", start_matchmaking_input);
             match gamelift.start_matchmaking(start_matchmaking_input).await {
                 Ok(result) => {
                     if let Some(_matchmaking_ticket) = result.matchmaking_ticket {                                               
